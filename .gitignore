@@ -1,0 +1,27 @@
+**__pycache__**
+**.ipynb_checkpoints
+
+ha_dpo/data/coco2014
+ha_dpo/data/hadpo
+ha_dpo/data/POPE
+ha_dpo/data/shr
+ha_dpo/data/VG
+ha_dpo/results
+
+ha_dpo/models/llava-v1_5/pope_adv.jsonl
+ha_dpo/models/llava-v1_5/pope_popular.jsonl
+ha_dpo/models/llava-v1_5/pope_random.jsonl
+
+ha_dpo/models/llava-v1_5/playground/data
+
+# # dir 不需要提交的目录
+# /node_modules
+# ​
+# # file 不需要提交的文件
+# config.ini
+# ​
+# # log 不需要提交的任意包含后缀名为log的文件
+# *.log
+# ​
+# # Package Files 不需要提交的任意包含后缀名为jar的文件
+# *.jar
