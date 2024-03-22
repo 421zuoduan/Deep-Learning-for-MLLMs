@@ -157,6 +157,8 @@ ha_dpo/models/instructblip/vigc/tasks/vqg_test.py
 ha_dpo/models/llava-v1_5/pope_eval.py
 ha_dpo/models/llava-v1_5/shr_eval.py
 ha_dpo/models/llava-v1_5/train_dpo.py
+ha_dpo/models/llava-v1_5/train_dpo_origin.py
+ha_dpo/models/llava-v1_5/train_xformers_test.py
 ha_dpo/models/llava-v1_5/llava/__init__.py
 ha_dpo/models/llava-v1_5/llava/constants.py
 ha_dpo/models/llava-v1_5/llava/conversation.py
@@ -281,9 +283,11 @@ ha_dpo/shr_eval/json_eval.py
 ha_dpo/shr_eval/shr_utils.py
 ha_dpo/trainer/__init__.py
 ha_dpo/trainer/base_dpo_trainer.py
+ha_dpo/trainer/base_dpo_trainer_origin.py
 ha_dpo/trainer/import_utils.py
 ha_dpo/trainer/instructblip_dpo_trainer.py
 ha_dpo/trainer/llava_dpo_trainer.py
+ha_dpo/trainer/llava_dpo_trainer_origin.py
 ha_dpo/trainer/minigpt4_dpo_trainer.py
 ha_dpo/trainer/utils.py
 hadpo.egg-info/PKG-INFO

@@ -1,6 +1,10 @@
 **__pycache__**
 **.ipynb_checkpoints
 
+*.log
+
+wandb
+
 ha_dpo/data/coco2014
 ha_dpo/data/hadpo
 ha_dpo/data/POPE
