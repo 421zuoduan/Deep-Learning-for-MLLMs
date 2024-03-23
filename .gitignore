@@ -18,6 +18,8 @@ ha_dpo/models/llava-v1_5/pope_random.jsonl
 
 ha_dpo/models/llava-v1_5/playground/data
 
+ha_dpo/models/llava-v1_5/checkpoints
+
 # # dir 不需要提交的目录
 # /node_modules
 # ​

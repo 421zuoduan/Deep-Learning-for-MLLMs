@@ -467,7 +467,7 @@ class SaverCallback(TrainerCallback):
     "A callback that prints a message at the end of training"
     def on_train_end(self, args, state, control, **kwargs):
         # save model
-        if isinstance(kwargs['model'], PeftModelForCausalLM):
+        if isinstance(kwargs['model'], LlavaLlamaForCausalLM):
             torch.cuda.synchronize()
             state_dict = get_peft_state_maybe_zero_3(
                 kwargs['model'].named_parameters(), "none"
