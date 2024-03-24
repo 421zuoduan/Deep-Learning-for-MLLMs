@@ -1,5 +1,5 @@
 import os
-os.environ["WANDB_PROJECT"]="ha-dpo-head"
+os.environ["WANDB_PROJECT"]="ha-dpo-post"
 
 import json
 import copy
