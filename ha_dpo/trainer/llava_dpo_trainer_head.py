@@ -6,7 +6,7 @@ from transformers import PreTrainedModel
 import warnings
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from .base_dpo_trainer_origin import BaseDPOTrainer
+from .base_dpo_trainer_head import BaseDPOTrainer
 
 class LlavaDPOTrainer(BaseDPOTrainer):
         
