@@ -35,22 +35,7 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
 
     def __init__(self, config: LlamaConfig):
         super(LlavaLlamaModel, self).__init__(config)
-        
-        
-class LlavaImagePostModule(nn.Module):
-    config_class = LlavaConfig
-    
-    def __init__(self, config):
-        super(LlavaImagePostModule, self).__init__()
-        self.config = config
-        self.image_post = nn.Linear(config.hidden_size, config.hidden_size)
-        
-        
-        
-        
-        
-        
-        
+
 
 class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaConfig
