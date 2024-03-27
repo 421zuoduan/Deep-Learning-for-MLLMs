@@ -6,7 +6,7 @@ from transformers import PreTrainedModel
 import warnings
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-from .base_dpo_trainer_postimport BaseDPOTrainer
+from .base_dpo_trainer_post import BaseDPOTrainer
 
 class LlavaDPOTrainer(BaseDPOTrainer):
         
@@ -34,6 +34,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         
         # prepare inputs
         (
+            image_features, 
             batch_input_ids,
             batch_position_ids,
             batch_attention_mask,
@@ -51,6 +52,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         
         # calculate logits
         all_logits = model.forward(
+            image_features,
             inputs_embeds=batch_inputs_embeds,
             labels=None,
             attention_mask=batch_attention_mask,

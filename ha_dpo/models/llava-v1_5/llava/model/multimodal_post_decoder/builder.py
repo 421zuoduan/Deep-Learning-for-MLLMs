@@ -5,7 +5,7 @@
  * @Last Modified time: 2024-03-25 15:37:12 
  */
 import os
-from .llava_post_decoder import PostDecoder
+from .post_decoder import PostDecoder
 
 
 def build_post_decoder(post_decoder_cfg, **kwargs):

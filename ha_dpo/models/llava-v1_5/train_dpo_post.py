@@ -33,7 +33,7 @@ from peft import (
     set_peft_model_state_dict,
 )
 
-from ha_dpo.trainer.llava_dpo_trainer_head import LlavaDPOTrainer
+from ha_dpo.trainer.llava_dpo_trainer_post import LlavaDPOTrainer
 
 local_rank = None
         
