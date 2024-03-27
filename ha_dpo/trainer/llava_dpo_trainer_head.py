@@ -11,7 +11,7 @@ from .base_dpo_trainer_head import BaseDPOTrainer
 class LlavaDPOTrainer(BaseDPOTrainer):
         
     def concatenated_forward(
-        self, model, inputs
+        self, model, inputs,
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         images = inputs["images"]
         chosen_input_ids = inputs["chosen_input_ids"]
@@ -50,11 +50,28 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         )
         
         # calculate logits
-        all_logits = model.forward(
-            inputs_embeds=batch_inputs_embeds,
-            labels=None,
-            attention_mask=batch_attention_mask,
-        ).logits.to(torch.float32)
+        # all_logits = model.forward(
+        #     inputs_embeds=batch_inputs_embeds,
+        #     labels=None,
+        #     attention_mask=batch_attention_mask,
+        # ).logits.to(torch.float32)
+    
+        if model is None:
+            # get ref_model
+            with model.disable_adapters():
+                all_logits = model.forward(
+                    inputs_embeds=batch_inputs_embeds,
+                    labels=None,
+                    attention_mask=batch_attention_mask,
+                ).logits.to(torch.float32)
+        else:
+            # for policy model
+            all_logits = model.forward(
+                inputs_embeds=batch_inputs_embeds,
+                labels=None,
+                attention_mask=batch_attention_mask,
+            ).logits.to(torch.float32)
+            
         cal_batch_logp = self._get_batch_logps
         all_logps = cal_batch_logp(
             all_logits,
@@ -91,13 +108,24 @@ class LlavaDPOTrainer(BaseDPOTrainer):
             policy_chosen_logits,
             policy_rejected_logits,
         ) = self.concatenated_forward(self.model, inputs)
-        with torch.no_grad():
-            (
-                reference_chosen_logps,
-                reference_rejected_logps,
-                _,
-                _,
-            ) = self.concatenated_forward(self.ref_model, inputs)
+        
+        
+        if self.ref_model is None:
+            with torch.no_grad():
+                (
+                    reference_chosen_logps,
+                    reference_rejected_logps,
+                    _,
+                    _,
+                ) = self.concatenated_forward(self.model, inputs)
+        else:
+            with torch.no_grad():
+                (
+                    reference_chosen_logps,
+                    reference_rejected_logps,
+                    _,
+                    _,
+                ) = self.concatenated_forward(self.ref_model, inputs)
 
         policy_rejected_logps = policy_rejected_logps
         reference_rejected_logps = reference_rejected_logps

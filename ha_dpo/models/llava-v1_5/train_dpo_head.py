@@ -19,7 +19,9 @@ import transformers
 from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
-from llava.model import *
+# from llava.model import *
+from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
+from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib
 from llava.train.train import preprocess_multimodal, preprocess
@@ -531,6 +533,7 @@ def setup_llava_model(model_args, data_args, script_args):
             model = LlavaMPTForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 config=config,
+                
                 cache_dir=script_args.cache_dir,
                 **bnb_model_from_pretrained_args
             )
@@ -698,16 +701,16 @@ def main():
         data_args=data_args,
         script_args=script_args,
     )
-    script_args.lora_enable = False
-    llava_ref_model, _ = setup_llava_model(
-        model_args=model_args, 
-        data_args=data_args,
-        script_args=script_args,
-    )
+    # script_args.lora_enable = False
+    # llava_ref_model, _ = setup_llava_model(
+    #     model_args=model_args, 
+    #     data_args=data_args,
+    #     script_args=script_args,
+    # )
     
-    # freeze reference model
-    for n,p in llava_ref_model.named_parameters():
-        p.requires_grad = False
+    # # freeze reference model
+    # for n,p in llava_ref_model.named_parameters():
+    #     p.requires_grad = False
     
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
@@ -753,7 +756,7 @@ def main():
     # initialize the DPO trainer
     dpo_trainer = LlavaDPOTrainer(
         model=llava_policy_model,
-        ref_model=llava_ref_model,
+        ref_model=None,
         args=training_args,
         beta=script_args.beta,
         tokenizer=tokenizer,

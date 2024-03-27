@@ -3,6 +3,8 @@
 
 *.log
 
+nohup.out
+
 wandb
 
 ha_dpo/data/coco2014

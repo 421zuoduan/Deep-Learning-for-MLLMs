@@ -51,12 +51,27 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         )
         
         # calculate logits
-        all_logits = model.forward(
-            image_features,
-            inputs_embeds=batch_inputs_embeds,
-            labels=None,
-            attention_mask=batch_attention_mask,
-        ).logits.to(torch.float32)
+        # all_logits = model.forward(
+        #     inputs_embeds=batch_inputs_embeds,
+        #     labels=None,
+        #     attention_mask=batch_attention_mask,
+        # ).logits.to(torch.float32)
+    
+        if model is None:
+            # get ref_model
+            with model.disable_adapters():
+                all_logits = model.forward(
+                    inputs_embeds=batch_inputs_embeds,
+                    labels=None,
+                    attention_mask=batch_attention_mask,
+                ).logits.to(torch.float32)
+        else:
+            # for policy model
+            all_logits = model.forward(
+                inputs_embeds=batch_inputs_embeds,
+                labels=None,
+                attention_mask=batch_attention_mask,
+            ).logits.to(torch.float32)
         cal_batch_logp = self._get_batch_logps
         all_logps = cal_batch_logp(
             all_logits,

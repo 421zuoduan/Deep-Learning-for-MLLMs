@@ -135,13 +135,18 @@ class BaseDPOTrainer(Trainer):
         elif hasattr(model, "llm_model"):
             self.is_peft_model = is_peft_available() and (isinstance(model, PeftModel) or isinstance(model.llm_model, PeftModel))
 
+        # if ref_model:
+        #     self.ref_model = ref_model
+        # elif self.is_peft_model:
+        #     # The `model` with adapters turned off will be used as the reference model
+        #     self.ref_model = None
+        # else:
+        #     self.ref_model = create_reference_model(model)
+        
         if ref_model:
             self.ref_model = ref_model
-        elif self.is_peft_model:
-            # The `model` with adapters turned off will be used as the reference model
-            self.ref_model = None
         else:
-            self.ref_model = create_reference_model(model)
+            self.ref_model = None
             
         if data_collator is None:
             if tokenizer is None:

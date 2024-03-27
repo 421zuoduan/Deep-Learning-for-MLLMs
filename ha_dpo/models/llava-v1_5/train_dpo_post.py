@@ -19,7 +19,9 @@ import transformers
 from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
-from llava.model import *
+# from llava.model import *
+from llava.model.language_model.llava_llama_post import LlavaLlamaForCausalLM
+from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib
 from llava.train.train import preprocess_multimodal, preprocess
