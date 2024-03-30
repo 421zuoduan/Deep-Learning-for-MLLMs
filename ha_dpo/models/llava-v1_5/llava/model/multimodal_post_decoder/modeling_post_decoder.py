@@ -1,9 +1,12 @@
-/*
+#!/usr/bin/env python 
+# -*- coding:utf-8 -*- 
+'''
  * @Author: Ruochen Cui 
- * @Date: 2024-03-25 08:24:03 
- * @Last Modified by: Ruochen Cui
- * @Last Modified time: 2024-03-25 13:07:08
- */
+ * @Date: 2024-03-27 17:36:21 
+ * @Last Modified by:   Ruochen Cui 
+ * @Last Modified time: 2024-03-27 17:36:21 
+ * @Desc: 
+'''
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple, Union
 
@@ -14,14 +17,13 @@ from torch import nn
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import BaseModelOutput, BaseModelOutputWithPooling
 from transformers.modeling_utils import PreTrainedModel
-from ...utils import (
+from transformers.utils import (
     ModelOutput,
     add_start_docstrings,
     add_start_docstrings_to_model_forward,
     logging,
     replace_return_docstrings,
 )
-from .configuration_post_decoder import PostDecoderConfig, PostDecoderBackboneConfig, PostDecoderVisionConfig
 
 
 logger = logging.get_logger(__name__)

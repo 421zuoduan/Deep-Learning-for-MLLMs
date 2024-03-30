@@ -1,4 +1,4 @@
-deepspeed --include localhost:6,7 ha_dpo/models/llava-v1_5/train_dpo_head.py \
+deepspeed --include localhost:6,7 ha_dpo/models/llava-v1_5/train_dpo_post.py \
     --lora_enable False \
     --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3.json \
     --model_name_or_path /home/cuiruochen/model/llava-v1.5-7b \

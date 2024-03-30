@@ -1,9 +1,12 @@
-/*
+#!/usr/bin/env python 
+# -*- coding:utf-8 -*- 
+'''
  * @Author: Ruochen Cui 
- * @Date: 2024-03-26 09:39:22 
- * @Last Modified by: Ruochen Cui
- * @Last Modified time: 2024-03-26 09:43:19
- */
+ * @Date: 2024-03-27 17:34:36 
+ * @Last Modified by:   Ruochen Cui 
+ * @Last Modified time: 2024-03-27 17:34:36 
+ * @Desc: 
+'''
 #    Copyright 2023 Haotian Liu
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,19 +28,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers.utils.doc import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
+from transformers.utils.doc import add_start_docstrings, add_start_docstrings_to_model_forward, replace_return_docstrings
 
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          LlamaConfig, LlamaModel, LlamaForCausalLM
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
-
 from transformers.models.llama import LlamaPreTrainedModel
+from ..multimodal_post_decoder.post_decoder import PostDecoder
 
-# TODO: add docstrings
-from ..multimodal_post_decoder.post_decoder import PostDecoderBlock
+from ..llava_arch_post import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
+from ..multimodal_post_decoder.configuration_post_decoder import LlavaLlamaPostDecoderConfig
 
-from ..llava_arch_with_post_decoder import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 _CONFIG_FOR_DOC = "LlamaPostDecoderConfig"
 
@@ -175,7 +178,7 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
-        outputs = self.model(
+        backbone_outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             position_ids=position_ids,
@@ -187,18 +190,16 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
             return_dict=return_dict,
         )
         
-        print("----------------------------------test self.model----------------------------------")
-        print(image_features.shape)
-        print(image_features)
+        hidden_states = backbone_outputs[0]
         
-
-        hidden_states = outputs[0]
+        post_deocder_outputs = self.post_decoder(image_features, hidden_states, input_ids=input_ids, attention_mask=attention_mask)
+        
         if self.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
-            logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
+            logits = [F.linear(post_deocder_outputs, lm_head_slices[i]) for i in range(self.pretraining_tp)]
             logits = torch.cat(logits, dim=-1)
         else:
-            logits = self.lm_head(hidden_states)
+            logits = self.lm_head(post_deocder_outputs)
         logits = logits.float()
 
         loss = None
@@ -215,15 +216,15 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
             loss = loss_fct(shift_logits, shift_labels)
 
         if not return_dict:
-            output = (logits,) + outputs[1:]
+            output = (logits,) + backbone_outputs[1:]
             return (loss,) + output if loss is not None else output
 
         return CausalLMOutputWithPast(
             loss=loss,
             logits=logits,
-            past_key_values=outputs.past_key_values,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
+            past_key_values=backbone_outputs.past_key_values,
+            hidden_states=backbone_outputs.hidden_states,
+            attentions=backbone_outputs.attentions,
         )
 
     def prepare_inputs_for_generation(
@@ -267,15 +268,15 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
 
 
 
-class LlavaPostDecoderConfig(LlamaConfig):
-    model_type = "llava-post_decoder"
+class LlavaPostDecoderConfig(LlavaLlamaPostDecoderConfig):
+    model_type = "llava-post-decoder"
 
-# no need to revise
-class LlavaLlamaModel(LlavaPostDecoderMetaModel, LlamaModel):
+
+class LlavaLlamaPostDecoderModel(LlavaPostDecoderMetaModel, LlamaModel):
     config_class = LlavaPostDecoderConfig
 
-    def __init__(self, config: LlamaConfig):
-        super(LlavaLlamaModel, self).__init__(config)
+    def __init__(self, config: LlavaLlamaPostDecoderConfig):
+        super(LlavaLlamaPostDecoderModel, self).__init__(config)
 
 
 # This is Llava-like model with the post-decoder
@@ -284,13 +285,17 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
 
     def __init__(self, config):
         super(LlamaPostDecoderForCausalLM, self).__init__(config)
-        self.model = LlavaLlamaModel(config)
+        self.model = LlavaLlamaPostDecoderModel(config)
         self.pretraining_tp = config.pretraining_tp
         self.vocab_size = config.vocab_size
+        self.post_decoder = PostDecoder(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
+        
+    def get_post_decoder(self):
+        return self.post_decoder
 
     def get_model(self):
         return self.model
@@ -311,9 +316,9 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         
-        if inputs_embeds is None:
+        if inputs_embeds is None and image_features is None:
             (
-                image_features_with_inputs_embeds, 
+                image_features, 
                 input_ids,
                 position_ids,
                 attention_mask,
@@ -328,9 +333,32 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
                 labels,
                 images
             )
-            
-        if inputs_embeds is None:
-            image_features = image_features_with_inputs_embeds
+        elif inputs_embeds is not None and image_features is None:
+            image_features = self.prepare_inputs_labels_for_multimodal(
+                input_ids,
+                position_ids,
+                attention_mask,
+                past_key_values,
+                labels,
+                images
+            )[0]
+        elif inputs_embeds is None and image_features is not None:
+            (
+                _, 
+                input_ids,
+                position_ids,
+                attention_mask,
+                past_key_values,
+                inputs_embeds,
+                labels
+            ) = self.prepare_inputs_labels_for_multimodal(
+                input_ids,
+                position_ids,
+                attention_mask,
+                past_key_values,
+                labels,
+                images
+            )
 
         return super().forward(
             image_features,
@@ -356,5 +384,5 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         return _inputs
 
 
-AutoConfig.register("llava", LlavaPostDecoderConfig)
+AutoConfig.register("llava-post-decoder", LlavaPostDecoderConfig)
 AutoModelForCausalLM.register(LlavaPostDecoderConfig, LlavaLlamaPostDecoderForCausalLM)

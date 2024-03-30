@@ -11,8 +11,8 @@ from .base_dpo_trainer_head import BaseDPOTrainer
 class LlavaDPOTrainer(BaseDPOTrainer):
         
     def concatenated_forward(
-        self, model, inputs,
-    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+        self, model, inputs, is_ref, pass_ref
+    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, bool, bool]:
         images = inputs["images"]
         chosen_input_ids = inputs["chosen_input_ids"]
         chosen_labels = inputs["chosen_labels"]
@@ -55,17 +55,35 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         #     labels=None,
         #     attention_mask=batch_attention_mask,
         # ).logits.to(torch.float32)
+        
+
     
-        if model is None:
-            # get ref_model
+        if not pass_ref and is_ref:
+            # get ref_model from model.disable_adapters
+            print("---------------------------------------------------------------------- test before ref_model ------------------------------------------------------------------------")
+            print(model)
             with model.disable_adapters():
                 all_logits = model.forward(
                     inputs_embeds=batch_inputs_embeds,
                     labels=None,
                     attention_mask=batch_attention_mask,
                 ).logits.to(torch.float32)
+            # ref_model = model.get_base_model()
+            # all_logits = ref_model.forward(
+            #     inputs_embeds=batch_inputs_embeds,
+            #     labels=None,
+            #     attention_mask=batch_attention_mask,
+            # ).logits.to(torch.float32)
+        elif pass_ref and is_ref:
+            # get ref_model from reference model passed
+            all_logits = model.forward(
+                inputs_embeds=batch_inputs_embeds,
+                labels=None,
+                attention_mask=batch_attention_mask,
+            ).logits.to(torch.float32)
         else:
             # for policy model
+            print("---------------------------------------------------------------------- test before model_forward------------------------------------------------------------------------")
             all_logits = model.forward(
                 inputs_embeds=batch_inputs_embeds,
                 labels=None,
@@ -107,7 +125,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
             policy_rejected_logps,
             policy_chosen_logits,
             policy_rejected_logits,
-        ) = self.concatenated_forward(self.model, inputs)
+        ) = self.concatenated_forward(self.model, inputs, is_ref=False, pass_ref=False)
         
         
         if self.ref_model is None:
@@ -117,7 +135,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
                     reference_rejected_logps,
                     _,
                     _,
-                ) = self.concatenated_forward(self.model, inputs)
+                ) = self.concatenated_forward(self.model, inputs, is_ref=True, pass_ref=False)
         else:
             with torch.no_grad():
                 (
@@ -125,7 +143,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
                     reference_rejected_logps,
                     _,
                     _,
-                ) = self.concatenated_forward(self.ref_model, inputs)
+                ) = self.concatenated_forward(self.ref_model, inputs, is_ref=True, pass_ref=True)
 
         policy_rejected_logps = policy_rejected_logps
         reference_rejected_logps = reference_rejected_logps

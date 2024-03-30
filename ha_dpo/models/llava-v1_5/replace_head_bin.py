@@ -1,3 +1,12 @@
+#!/usr/bin/env python 
+# -*- coding:utf-8 -*- 
+'''
+ * @Author: Ruochen Cui 
+ * @Date: 2024-03-27 17:35:53 
+ * @Last Modified by:   Ruochen Cui 
+ * @Last Modified time: 2024-03-27 17:35:53 
+ * @Desc: 
+'''
 import torch
 
 # 加载 non_lora_trainables.bin 文件中的 lm_head 参数

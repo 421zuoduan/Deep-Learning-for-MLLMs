@@ -61,6 +61,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
             # get ref_model
             with model.disable_adapters():
                 all_logits = model.forward(
+                    image_features=image_features if image_features is not None else None, 
                     inputs_embeds=batch_inputs_embeds,
                     labels=None,
                     attention_mask=batch_attention_mask,
@@ -68,6 +69,7 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         else:
             # for policy model
             all_logits = model.forward(
+                image_features=image_features if image_features is not None else None,
                 inputs_embeds=batch_inputs_embeds,
                 labels=None,
                 attention_mask=batch_attention_mask,

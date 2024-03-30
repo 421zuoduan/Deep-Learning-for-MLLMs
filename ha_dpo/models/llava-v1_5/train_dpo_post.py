@@ -1,3 +1,12 @@
+#!/usr/bin/env python 
+# -*- coding:utf-8 -*- 
+'''
+ * @Author: Ruochen Cui 
+ * @Date: 2024-03-27 17:35:02 
+ * @Last Modified by:   Ruochen Cui 
+ * @Last Modified time: 2024-03-27 17:35:02 
+ * @Desc: 
+'''
 import os
 os.environ["WANDB_PROJECT"]="ha-dpo-post"
 
@@ -20,7 +29,7 @@ from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
 # from llava.model import *
-from llava.model.language_model.llava_llama_post import LlavaLlamaForCausalLM
+from llava.model.language_model.llava_llama_post import LlavaLlamaPostDecoderForCausalLM
 from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib
@@ -469,7 +478,7 @@ class SaverCallback(TrainerCallback):
     "A callback that prints a message at the end of training"
     def on_train_end(self, args, state, control, **kwargs):
         # save model
-        if isinstance(kwargs['model'], LlavaLlamaForCausalLM):
+        if isinstance(kwargs['model'], LlavaLlamaPostDecoderForCausalLM):
             torch.cuda.synchronize()
             state_dict = get_peft_state_maybe_zero_3(
                 kwargs['model'].named_parameters(), "none"
@@ -527,7 +536,7 @@ def setup_llava_model(model_args, data_args, script_args):
                 **bnb_model_from_pretrained_args
             )
         else:
-            model = LlavaLlamaForCausalLM.from_pretrained(
+            model = LlavaLlamaPostDecoderForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=script_args.cache_dir,
                 **bnb_model_from_pretrained_args
