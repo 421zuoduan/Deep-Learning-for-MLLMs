@@ -50,45 +50,11 @@ class LlavaDPOTrainer(BaseDPOTrainer):
         )
         
         # calculate logits
-        # all_logits = model.forward(
-        #     inputs_embeds=batch_inputs_embeds,
-        #     labels=None,
-        #     attention_mask=batch_attention_mask,
-        # ).logits.to(torch.float32)
-        
-
-    
-        if not pass_ref and is_ref:
-            # get ref_model from model.disable_adapters
-            print("---------------------------------------------------------------------- test before ref_model ------------------------------------------------------------------------")
-            print(model)
-            with model.disable_adapters():
-                all_logits = model.forward(
-                    inputs_embeds=batch_inputs_embeds,
-                    labels=None,
-                    attention_mask=batch_attention_mask,
-                ).logits.to(torch.float32)
-            # ref_model = model.get_base_model()
-            # all_logits = ref_model.forward(
-            #     inputs_embeds=batch_inputs_embeds,
-            #     labels=None,
-            #     attention_mask=batch_attention_mask,
-            # ).logits.to(torch.float32)
-        elif pass_ref and is_ref:
-            # get ref_model from reference model passed
-            all_logits = model.forward(
-                inputs_embeds=batch_inputs_embeds,
-                labels=None,
-                attention_mask=batch_attention_mask,
-            ).logits.to(torch.float32)
-        else:
-            # for policy model
-            print("---------------------------------------------------------------------- test before model_forward------------------------------------------------------------------------")
-            all_logits = model.forward(
-                inputs_embeds=batch_inputs_embeds,
-                labels=None,
-                attention_mask=batch_attention_mask,
-            ).logits.to(torch.float32)
+        all_logits = model.forward(
+            inputs_embeds=batch_inputs_embeds,
+            labels=None,
+            attention_mask=batch_attention_mask,
+        ).logits.to(torch.float32)
             
         cal_batch_logp = self._get_batch_logps
         all_logps = cal_batch_logp(

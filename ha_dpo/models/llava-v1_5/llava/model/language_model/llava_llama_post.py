@@ -192,7 +192,40 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
         
         hidden_states = backbone_outputs[0]
         
-        post_deocder_outputs = self.post_decoder(image_features, hidden_states, input_ids=input_ids, attention_mask=attention_mask)
+        # if input_ids is not None and inputs_embeds is not None:
+        #     raise ValueError("You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
+        # elif input_ids is not None:
+        #     batch_size, seq_length = input_ids.shape
+        # elif inputs_embeds is not None:
+        #     batch_size, seq_length, _ = inputs_embeds.shape
+        # else:
+        #     raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
+        
+        # input_shape = (batch_size, seq_length)
+        
+        # print("------------------------------------------------------ in super input-----------------------------------------------------------")
+        # print(f"hidden_states.shape: {hidden_states.shape}")
+        # print(f"input_shape: {input_shape}")
+        # if input_ids is not None:
+        #     print(f"input_ids.shape: {input_ids.shape}")
+        # else:
+        #     print("input_ids is None")
+        # print(f"attention_mask.shape: {attention_mask.shape}")
+        # if position_ids is not None:
+        #     print(f"position_ids.shape: {position_ids.shape}")
+        # else:
+        #     print("position_ids is None")
+        # if past_key_values is not None:
+        #     print(f"past_key_values: {len(past_key_values)}")
+        # else:
+        #     print("past_key_values is None")
+        
+        # if inputs_embeds is not None:
+        #     print(f"inputs_embeds.shape: {inputs_embeds.shape}")
+        # else:
+        #     print("inputs_embeds is None")
+        
+        post_deocder_outputs = self.post_decoder(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
         
         if self.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
@@ -302,7 +335,6 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
 
     def forward(
         self,
-        image_features, 
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
@@ -316,9 +348,8 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         
-        if inputs_embeds is None and image_features is None:
+        if inputs_embeds is None:
             (
-                image_features, 
                 input_ids,
                 position_ids,
                 attention_mask,
@@ -333,35 +364,11 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
                 labels,
                 images
             )
-        elif inputs_embeds is not None and image_features is None:
-            image_features = self.prepare_inputs_labels_for_multimodal(
-                input_ids,
-                position_ids,
-                attention_mask,
-                past_key_values,
-                labels,
-                images
-            )[0]
-        elif inputs_embeds is None and image_features is not None:
-            (
-                _, 
-                input_ids,
-                position_ids,
-                attention_mask,
-                past_key_values,
-                inputs_embeds,
-                labels
-            ) = self.prepare_inputs_labels_for_multimodal(
-                input_ids,
-                position_ids,
-                attention_mask,
-                past_key_values,
-                labels,
-                images
-            )
+        
+        vision_tower_image_features = self.get_model().get_vision_tower()(images)
 
         return super().forward(
-            image_features,
+            vision_tower_image_features,
             input_ids=input_ids,
             attention_mask=attention_mask,
             position_ids=position_ids,
@@ -382,6 +389,8 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         if images is not None:
             _inputs['images'] = images
         return _inputs
+    
+
 
 
 AutoConfig.register("llava-post-decoder", LlavaPostDecoderConfig)

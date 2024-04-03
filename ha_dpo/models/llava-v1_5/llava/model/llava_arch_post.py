@@ -92,10 +92,10 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
         return self.get_model().get_vision_tower()
 
     def encode_images(self, images):
-        vision_tower_image_features = self.get_model().get_vision_tower()(images)
-        image_features = self.get_model().mm_projector(vision_tower_image_features)
-        return vision_tower_image_features, image_features
-
+        image_features = self.get_model().get_vision_tower()(images)
+        image_features = self.get_model().mm_projector(image_features)
+        return image_features
+   
     def prepare_inputs_labels_for_multimodal(
         self, input_ids, position_ids, attention_mask, past_key_values, labels, images
     ):
@@ -113,16 +113,12 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
 
         if type(images) is list or images.ndim == 5:
             concat_images = torch.cat([image for image in images], dim=0)
-            vision_tower_image_features, image_features = self.encode_images(concat_images)
+            image_features = self.encode_images(concat_images)
             split_sizes = [image.shape[0] for image in images]
             image_features = torch.split(image_features, split_sizes, dim=0)
-            vision_tower_image_features = torch.split(vision_tower_image_features, split_sizes, dim=0)
             image_features = [x.flatten(0, 1).to(self.device) for x in image_features]
-            vision_tower_image_features = [x.flatten(0, 1).to(self.device) for x in vision_tower_image_features]
         else:
-            vision_tower_image_features, image_features = self.encode_images(images)
-            vision_tower_image_features = vision_tower_image_features.to(self.device)
-            image_features = image_features.to(self.device)
+            image_features = self.encode_images(images).to(self.device)
 
         # TODO: image start / end is not implemented here to support pretraining.
         if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
@@ -143,10 +139,6 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
             position_ids = torch.arange(0, input_ids.shape[1], dtype=torch.long, device=input_ids.device)
         if labels is None:
             labels = torch.full_like(input_ids, IGNORE_INDEX)
-            
-        # input_ids.shape: torch.Size([2, 195]) 195 192
-        # attention_mask.shape: torch.Size([2, 195]) 195 192
-        # indices where input_ids[0] == IMAGE_TOKEN_INDEX: tensor([35], device='cuda:1')
 
         # remove the padding using attention_mask -- TODO: double check
         input_ids = [cur_input_ids[cur_attention_mask] for cur_input_ids, cur_attention_mask in zip(input_ids, attention_mask)]
@@ -156,12 +148,8 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
         new_labels = []
         cur_image_idx = 0
         for batch_idx, cur_input_ids in enumerate(input_ids):
-            # cur_input_ids.shape: torch.Size([195]) 195 189 161 192
-            # length of cur_input_ids is longer than the number of  all tokens, which is because we have IMAGE_TOKEN_INDEX  to denote the number of images
-            # num_images is equal to per_device_train_batch_size
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
             if num_images == 0:
-                # if there is no image input
                 cur_image_features = image_features[cur_image_idx]
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
                 cur_input_embeds = torch.cat([cur_input_embeds_1, cur_image_features[0:0]], dim=0)
@@ -177,19 +165,12 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
             for i in range(len(image_token_indices) - 1):
                 cur_input_ids_noim.append(cur_input_ids[image_token_indices[i]+1:image_token_indices[i+1]])
                 cur_labels_noim.append(cur_labels[image_token_indices[i]+1:image_token_indices[i+1]])
-            
-            # torch.cat(cur_input_ids_noim).shape: torch.Size([194]) 194 188 160 191
-            # split_sizes: value [35, 159], [35, 153], [35, 125], [35, 156]
-            # cur_input_embed.shape: torch.Size([194, 4096]) 194 188 160 191
-            # cur_input_embeds_no_im[0].shape: torch.Size([35, 4096])
-            # cur_input_embeds_no_im[1].shape: torch.Size([159, 4096]) 159 153 156 125
             split_sizes = [x.shape[0] for x in cur_labels_noim]
             cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim))
             cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
             cur_new_input_embeds = []
             cur_new_labels = []
 
-            # here we concat the image features to the input embeddings
             for i in range(num_images + 1):
                 cur_new_input_embeds.append(cur_input_embeds_no_im[i])
                 cur_new_labels.append(cur_labels_noim[i])
@@ -199,14 +180,12 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
                     cur_new_input_embeds.append(cur_image_features)
                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
 
-            # cur_new_input_embeds.shape: ([770, 4096])
-            # cur_new_labels.shape: torch.Size([770])
             cur_new_input_embeds = torch.cat(cur_new_input_embeds)
             cur_new_labels = torch.cat(cur_new_labels)
 
-            # new_input_embeds.shape: list torch.Size([2, 770, 4096])
             new_input_embeds.append(cur_new_input_embeds)
             new_labels.append(cur_new_labels)
+        
 
         # Truncate sequences to max length as image embeddings can make the sequence longer
         tokenizer_model_max_length = getattr(self.config, 'tokenizer_model_max_length', None)
@@ -244,7 +223,6 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
                     attention_mask[i, :cur_len] = True
                     position_ids[i, :cur_len] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
 
-        # new_input_embeds.shape: torch.Size([2, 770, 4096])
         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
 
         if _labels is None:
@@ -260,7 +238,9 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
         if _position_ids is None:
             position_ids = None
 
-        return vision_tower_image_features, None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
+        return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
+    
+    
 
     def initialize_vision_tokenizer(self, model_args, tokenizer):
         if model_args.mm_use_im_patch_token:
