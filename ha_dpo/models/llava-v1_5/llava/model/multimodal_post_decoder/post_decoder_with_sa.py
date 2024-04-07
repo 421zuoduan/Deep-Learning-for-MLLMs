@@ -456,7 +456,7 @@ class PostDecoderCATransformerBlock(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, intermediate_size, hidden_act, attention_dropout=0.0, layer_norm_eps=1e-5):
         super().__init__()
         self.embed_dim = hidden_size
-        # self.self_attn = PostDecoderSelfAttention(hidden_size, num_attention_heads, attention_dropout=attention_dropout)
+        self.self_attn = PostDecoderSelfAttention(hidden_size, num_attention_heads, attention_dropout=attention_dropout)
         self.cross_attn = PostDecoderCrossAttention(hidden_size, num_attention_heads, attention_dropout=attention_dropout)
         self.layer_norm1 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
         self.mlp = PostDecoderMLP(hidden_size, intermediate_size, hidden_act)
@@ -488,12 +488,12 @@ class PostDecoderCATransformerBlock(nn.Module):
         residual = hidden_states
 
         hidden_states = self.layer_norm1(hidden_states)
-        # hidden_states, attn_weights = self.self_attn(
-        #     hidden_states=hidden_states,
-        #     attention_mask=attention_mask,
-        #     causal_attention_mask=causal_attention_mask,
-        #     output_attentions=output_attentions,
-        # )
+        hidden_states, attn_weights = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            causal_attention_mask=causal_attention_mask,
+            output_attentions=output_attentions,
+        )
         hidden_states, attn_weights = self.cross_attn(
             image_features=image_features,
             hidden_states=hidden_states,
@@ -542,8 +542,6 @@ class PostDecoder(nn.Module):
         
         self.align = AlignMLP(config.mm_hidden_size, config.intermediate_size, config.hidden_size, config.align_hidden_act)
         
-        self.image_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        
         self.blocks = nn.ModuleList([
             PostDecoderCATransformerBlock(config.hidden_size, config.num_attention_heads, config.intermediate_size, config.hidden_act)
             for i in range(depth)])
@@ -561,7 +559,6 @@ class PostDecoder(nn.Module):
     
     
         image_features = self.align(image_features, pretraining_tp=self.config.pretraining_tp)
-        image_features = self.image_norm(image_features)
         
         # copied from LlmaModel.forward
         # retrieve input_ids and inputs_embeds

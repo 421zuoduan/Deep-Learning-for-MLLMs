@@ -55,6 +55,7 @@ class ModelArguments:
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
     tune_lm_head: bool = field(default=False)
+    tune_post_decoder: bool = field(default=False)
     vision_tower: Optional[str] = field(default=None)
     mm_vision_select_layer: Optional[int] = field(default=-1)   # default to the last layer
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
@@ -660,6 +661,14 @@ def setup_llava_model(model_args, data_args, script_args):
         script_args.use_im_start_end = model_args.mm_use_im_start_end
         model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
         model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
+        
+    if model_args.tune_post_decoder:
+        if hasattr(model, "post_decoder"):
+            model.post_decoder.requires_grad_(True)
+            for p in model.post_decoder.parameters():
+                p.requires_grad = True
+        else:
+            Warning("No post_decoder found in the model.")
 
     if model_args.tune_lm_head:
         model.lm_head.requires_grad_(True)

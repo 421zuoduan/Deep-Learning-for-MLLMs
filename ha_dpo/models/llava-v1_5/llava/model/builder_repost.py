@@ -19,13 +19,10 @@ import shutil
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAndBytesConfig
 import torch
-from llava.model.language_model.llava_llama_post import *
-from llava.model.multimodal_encoder import *
-from llava.model.multimodal_post_decoder import *
-from llava.model.multimodal_projector import *
-from llava.model.builder_post import *
-from llava.model.llava_arch_post import *
+from llava.model import *
 from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+
+from .language_model.llava_llama_post import LlavaLlamaPostDecoderForCausalLM
 
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda"):
@@ -89,41 +86,15 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             model = model.merge_and_unload()
             print('Model is loaded...')
         elif 'post' in model_name.lower() and model_base is not None:
-            post_cfg_pretrained = AutoConfig.from_pretrained(model_path)
-            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
+            # this may be mm projector only
             print('Loading LLaVA from base model...')
-            model = LlavaLlamaPostDecoderForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=post_cfg_pretrained, **kwargs)
-            token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
-            if model.lm_head.weight.shape[0] != token_num:
-                model.lm_head.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
-                model.model.embed_tokens.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
+            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
+            cfg_pretrained = AutoConfig.from_pretrained(model_path)
+            model = LlavaLlamaPostDecoderForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
 
-            print('Loading additional LLaVA weights...')
-            if os.path.exists(os.path.join(model_path, 'non_lora_trainables.bin')):
-                non_lora_trainables = torch.load(os.path.join(model_path, 'non_lora_trainables.bin'), map_location='cpu')
-            else:
-                raise FileNotFoundError(f"non_lora_trainables.bin not found in {model_path}")
-            
-            post_decoder_trainables = {k: v for k, v in non_lora_trainables.items() if k.startswith('post_decoder')}
-            try:
-                model.load_state_dict(post_decoder_trainables, strict=False)
-            except BaseException:
-                pass
-            
-            # non_lora_trainables = {(k[11:] if k.startswith('base_model.') else k): v for k, v in non_lora_trainables.items()}
-            # if any(k.startswith('model.model.') for k in non_lora_trainables):
-            #     non_lora_trainables = {(k[6:] if k.startswith('model.') else k): v for k, v in non_lora_trainables.items()}
-            # try:
-            #     model.load_state_dict(non_lora_trainables, strict=False)
-            # except BaseException:
-            #     pass
-            
-            from peft import PeftModel
-            print('Loading Post Decoder weights...')
-            model = PeftModel.from_pretrained(model, model_path)
-            print('Merging Post Decoder weights...')
-            model = model.merge_and_unload()
-            print('Model is loaded...')
+            mm_projector_weights = torch.load(os.path.join(model_path, 'mm_projector.bin'), map_location='cpu')
+            mm_projector_weights = {k: v.to(torch.float16) for k, v in mm_projector_weights.items()}
+            model.load_state_dict(mm_projector_weights, strict=False)
         elif model_base is not None:
             # this may be mm projector only
             print('Loading LLaVA from base model...')
@@ -133,10 +104,6 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=True)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
                 model = LlavaMPTForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
-            elif 'post' in model_name.lower():
-                tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-                cfg_pretrained = AutoConfig.from_pretrained(model_path)
-                model = LlavaLlamaPostDecoderForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
@@ -150,7 +117,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 model = LlavaMPTForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             elif 'post' in model_name.lower():
-                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = LlavaLlamaPostDecoderForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)

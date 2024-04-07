@@ -111,8 +111,10 @@ LLAMA_INPUTS_DOCSTRING = r"""
 
 # add post decoder to forward function
 class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
-    _tied_weights_keys = ["post_decoder.weight"]
     _tied_weights_keys = ["lm_head.weight"]
+    # _tied_weights_keys = ["post_decoder.weight"]
+    # _tied_weights_keys = ["lm_head.weight", "post_decoder.weight"]
+    # _tied_weights_keys = ["lm_head.weight", "post_decoder.align.fc1.weight", "post_decoder.align.fc1.bias", "post_decoder.align.fc2.weight", "post_decoder.align.fc2.bias", "post_decoder.blocks.0.self_attn.k_proj.weight", "post_decoder.blocks.0.self_attn.k_proj.bias", "post_decoder.blocks.0.self_attn.v_proj.weight", "post_decoder.blocks.0.self_attn.v_proj.bias", "post_decoder.blocks.0.self_attn.q_proj.weight", "post_decoder.blocks.0.self_attn.q_proj.bias", "post_decoder.blocks.0.self_attn.out_proj.weight", "post_decoder.blocks.0.self_attn.out_proj.bias", "post_decoder.blocks.0.cross_attn.k_proj.weight", "post_decoder.blocks.0.cross_attn.k_proj.bias", "post_decoder.blocks.0.cross_attn.v_proj.weight", "post_decoder.blocks.0.cross_attn.v_proj.bias", "post_decoder.blocks.0.cross_attn.q_proj.weight", "post_decoder.blocks.0.cross_attn.q_proj.bias", "post_decoder.blocks.0.cross_attn.out_proj.weight", "post_decoder.blocks.0.cross_attn.out_proj.bias", "post_decoder.blocks.0.layer_norm1.weight", "post_decoder.blocks.0.layer_norm1.bias", "post_decoder.blocks.0.mlp.fc1.weight", "post_decoder.blocks.0.mlp.fc1.bias", "post_decoder.blocks.0.mlp.fc2.weight", "post_decoder.blocks.0.mlp.fc2.bias", "post_decoder.blocks.0.layer_norm2.weight", "post_decoder.blocks.0.layer_norm2.bias"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -160,10 +162,6 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
-            labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
-                Labels for computing the masked language modeling loss. Indices should either be in `[0, ...,
-                config.vocab_size]` or -100 (see `input_ids` docstring). Tokens with indices set to `-100` are ignored
-                (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
 
         Returns:
 
@@ -191,39 +189,6 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
         )
         
         hidden_states = backbone_outputs[0]
-        
-        # if input_ids is not None and inputs_embeds is not None:
-        #     raise ValueError("You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
-        # elif input_ids is not None:
-        #     batch_size, seq_length = input_ids.shape
-        # elif inputs_embeds is not None:
-        #     batch_size, seq_length, _ = inputs_embeds.shape
-        # else:
-        #     raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
-        
-        # input_shape = (batch_size, seq_length)
-        
-        # print("------------------------------------------------------ in super input-----------------------------------------------------------")
-        # print(f"hidden_states.shape: {hidden_states.shape}")
-        # print(f"input_shape: {input_shape}")
-        # if input_ids is not None:
-        #     print(f"input_ids.shape: {input_ids.shape}")
-        # else:
-        #     print("input_ids is None")
-        # print(f"attention_mask.shape: {attention_mask.shape}")
-        # if position_ids is not None:
-        #     print(f"position_ids.shape: {position_ids.shape}")
-        # else:
-        #     print("position_ids is None")
-        # if past_key_values is not None:
-        #     print(f"past_key_values: {len(past_key_values)}")
-        # else:
-        #     print("past_key_values is None")
-        
-        # if inputs_embeds is not None:
-        #     print(f"inputs_embeds.shape: {inputs_embeds.shape}")
-        # else:
-        #     print("inputs_embeds is None")
         
         post_deocder_outputs = self.post_decoder(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
         
@@ -348,6 +313,24 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         
+        # print("----------------------------------------------- before prepare -------------------------------------")
+        # if images is not None:
+        #     print(f"images: {images.shape}")
+        # else:
+        #     print("images: None")
+            
+        # if inputs_embeds is not None:
+        #     print(f"input_embeds: {inputs_embeds.shape}")
+        # else:
+        #     print("input_embeds: None")
+            
+        # if input_ids is not None:
+        #     print(f"input_ids: {input_ids.shape}")
+        # else:
+        #     print("input_ids: None")
+        
+        _input = images if images is not None else inputs_embeds
+        
         if inputs_embeds is None:
             (
                 input_ids,
@@ -364,8 +347,15 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
                 labels,
                 images
             )
+            
+        # print("----------------------------------------------------------- after prepare -----------------------------------------")
+        # if images is not None:
+        #     print(f"images: {images.shape}")
+        # else:
+        #     print("images: None")
         
-        vision_tower_image_features = self.get_model().get_vision_tower()(images)
+        
+        vision_tower_image_features = self.get_model().get_vision_tower()(_input)
 
         return super().forward(
             vision_tower_image_features,

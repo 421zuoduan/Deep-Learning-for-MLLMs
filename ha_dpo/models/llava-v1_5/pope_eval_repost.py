@@ -10,7 +10,7 @@ from io import BytesIO
 from transformers import TextStreamer
 
 from llava.utils import disable_torch_init
-from llava.model.builder_post import load_pretrained_model
+from llava.model.builder_repost import load_pretrained_model
 from llava.conversation import conv_templates, SeparatorStyle
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
@@ -27,8 +27,7 @@ def main(args):
     local_rank = int(os.environ["LOCAL_RANK"])
     device = f"cuda:{local_rank}"
     # model_name = get_model_name_from_path(args.model_path)
-    model_name = "llava-post-decoder"
-    train_lora = False
+    model_name = 'llava-post-decoder'
     if args.model_base is None:
         tokenizer, model, image_processor, context_len = load_pretrained_model(
             model_path=args.model_path, 
@@ -38,7 +37,7 @@ def main(args):
             load_4bit=args.load_4bit, 
             device=device
         )
-    elif args.model_base is not None and train_lora:
+    elif args.model_base is not None and args.train_lora:
         tokenizer, model, image_processor, context_len = load_pretrained_model(
             model_path=args.model_path,
             model_base=args.model_base, 
@@ -49,14 +48,13 @@ def main(args):
         )
     else:
         tokenizer, model, image_processor, context_len = load_pretrained_model(
-            model_path=args.model_path,
+            model_path=args.model_path, 
             model_base=args.model_base, 
             model_name=model_name,
             load_8bit=args.load_8bit, 
             load_4bit=args.load_4bit, 
             device=device
         )
-        
 
     conv_mode = "llava_v1"
 
@@ -116,9 +114,6 @@ def main(args):
         stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
         keywords = [stop_str]
         stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
-        # print(f"model.get_post_decoder().align.fc1.requires_grad: {model.get_post_decoder().align.fc1.requires_grad}")
-        # print(f"model.get_post_decoder().align.fc1: {model.get_post_decoder().align.fc1}")
-        print(f"model.post_decoder.align.fc1: {model.post_decoder.align.fc1.weight}")
 
         with torch.inference_mode():
             output_ids = model.generate(
@@ -172,6 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--model-base", type=str, default=None)
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
+    parser.add_argument("--train-lora", action="store_true")
     
     parser.add_argument("--pope_path", type=str, required=True)
     parser.add_argument("--coco_path", type=str, required=True)
