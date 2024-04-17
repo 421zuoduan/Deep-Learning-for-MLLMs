@@ -114,7 +114,7 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
     # _tied_weights_keys = ["post_decoder.weight"]
     # _tied_weights_keys = ["lm_head.weight", "post_decoder.weight"]
-    # _tied_weights_keys = ["lm_head.weight", "post_decoder.align.fc1.weight", "post_decoder.align.fc1.bias", "post_decoder.align.fc2.weight", "post_decoder.align.fc2.bias", "post_decoder.blocks.0.self_attn.k_proj.weight", "post_decoder.blocks.0.self_attn.k_proj.bias", "post_decoder.blocks.0.self_attn.v_proj.weight", "post_decoder.blocks.0.self_attn.v_proj.bias", "post_decoder.blocks.0.self_attn.q_proj.weight", "post_decoder.blocks.0.self_attn.q_proj.bias", "post_decoder.blocks.0.self_attn.out_proj.weight", "post_decoder.blocks.0.self_attn.out_proj.bias", "post_decoder.blocks.0.cross_attn.k_proj.weight", "post_decoder.blocks.0.cross_attn.k_proj.bias", "post_decoder.blocks.0.cross_attn.v_proj.weight", "post_decoder.blocks.0.cross_attn.v_proj.bias", "post_decoder.blocks.0.cross_attn.q_proj.weight", "post_decoder.blocks.0.cross_attn.q_proj.bias", "post_decoder.blocks.0.cross_attn.out_proj.weight", "post_decoder.blocks.0.cross_attn.out_proj.bias", "post_decoder.blocks.0.layer_norm1.weight", "post_decoder.blocks.0.layer_norm1.bias", "post_decoder.blocks.0.mlp.fc1.weight", "post_decoder.blocks.0.mlp.fc1.bias", "post_decoder.blocks.0.mlp.fc2.weight", "post_decoder.blocks.0.mlp.fc2.bias", "post_decoder.blocks.0.layer_norm2.weight", "post_decoder.blocks.0.layer_norm2.bias"]
+    # _tied_weights_keys = ["lm_head.weight", "post_decoder.align.fc1.weight", "post_decoder.align.fc2.weight", "post_decoder.blocks.0.self_attn.k_proj.weight", "post_decoder.blocks.0.self_attn.v_proj.weight", "post_decoder.blocks.0.self_attn.q_proj.weight", "post_decoder.blocks.0.self_attn.out_proj.weight", "post_decoder.blocks.0.cross_attn.k_proj.weight", "post_decoder.blocks.0.cross_attn.v_proj.weight", "post_decoder.blocks.0.cross_attn.q_proj.weight", "post_decoder.blocks.0.cross_attn.out_proj.weight", "post_decoder.blocks.0.layer_norm1.weight", "post_decoder.blocks.0.layer_norm1.bias", "post_decoder.blocks.0.mlp.fc1.weight", "post_decoder.blocks.0.mlp.fc2.weight", "post_decoder.blocks.0.layer_norm2.weight", "post_decoder.blocks.0.layer_norm2.bias", "post_decoder.image_norm.bias", "post_decoder.image_norm.weight", "post_decoder.align.fc1.bias", "post_decoder.align.fc2.bias"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -314,6 +314,10 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         
         # print("----------------------------------------------- before prepare -------------------------------------")
+        # if attention_mask is not None:
+        #     print(f"attention_mask: {attention_mask.shape}")
+        # else:
+        #     print("attention_mask: None")
         # if images is not None:
         #     print(f"images: {images.shape}")
         # else:
@@ -349,10 +353,10 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
             )
             
         # print("----------------------------------------------------------- after prepare -----------------------------------------")
-        # if images is not None:
-        #     print(f"images: {images.shape}")
+        # if attention_mask is not None:
+        #     print(f"attention_mask: {attention_mask.shape}")
         # else:
-        #     print("images: None")
+        #     print("attention_mask: None")
         
         
         vision_tower_image_features = self.get_model().get_vision_tower()(_input)

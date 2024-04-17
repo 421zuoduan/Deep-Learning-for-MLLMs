@@ -118,7 +118,8 @@ def main(args):
         stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
         # print(f"model.get_post_decoder().align.fc1.requires_grad: {model.get_post_decoder().align.fc1.requires_grad}")
         # print(f"model.get_post_decoder().align.fc1: {model.get_post_decoder().align.fc1}")
-        print(f"model.post_decoder.align.fc1: {model.post_decoder.align.fc1.weight}")
+        # print(f"model.post_decoder.align.fc1: {model.post_decoder.align.fc1.weight}")
+        print(f"lm_head.weight: {model.lm_head.weight}")
 
         with torch.inference_mode():
             output_ids = model.generate(
@@ -136,6 +137,7 @@ def main(args):
             "answer": outputs,
             "question_id": question_id,
         })
+        print(f"outputs: {outputs}")
         
     device = f"cuda:{torch.cuda.current_device()}"
     # convert dictionary -> tensor for gather all results in all ranks

@@ -461,6 +461,13 @@ class PostDecoderCATransformerBlock(nn.Module):
         self.layer_norm1 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
         self.mlp = PostDecoderMLP(hidden_size, intermediate_size, hidden_act)
         self.layer_norm2 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
+        
+    def generate_causal_attention_mask(seq_image, seq_all):
+        seq_text = seq_all - seq_image
+        causal_mask = torch.tril(torch.ones(seq_image, seq_image))
+        ones_matrix = torch.zeros(seq_text, seq_image)
+        mask_matrix = torch.cat((causal_mask, ones_matrix), dim=0)
+        return mask_matrix
 
     def forward(
         self,
@@ -494,6 +501,10 @@ class PostDecoderCATransformerBlock(nn.Module):
         #     causal_attention_mask=causal_attention_mask,
         #     output_attentions=output_attentions,
         # )
+        
+        # if causal_attention_mask is None:
+        #     causal_attention_mask = self.generate_causal_attention_mask(image_features.size(1), hidden_states.size(1))
+        
         hidden_states, attn_weights = self.cross_attn(
             image_features=image_features,
             hidden_states=hidden_states,
@@ -559,7 +570,6 @@ class PostDecoder(nn.Module):
             outputs (Tensor): torch.Size([8, 752, 4096])
         """
     
-    
         image_features = self.align(image_features, pretraining_tp=self.config.pretraining_tp)
         image_features = self.image_norm(image_features)
         
@@ -575,6 +585,21 @@ class PostDecoder(nn.Module):
             raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
 
         device = input_ids.device if input_ids is not None else inputs_embeds.device
+        
+        # 这里输入的attention_mask已经是 bs, token_nums, channels的维度了, 是已经在llamamodel里的attention mask
+        # 上面的mask在self attention中可以直接用
+        # cross attention中的attention mask需要自己写, 这里还没有写完
+        if attention_mask is None:
+            attention_mask = torch.ones(
+                (batch_size, seq_length), dtype=torch.bool, device=inputs_embeds.device
+            )
+        ca_attention_mask = prepare_decoder_attention_mask(
+            attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
+        )
+
+            
+            
+            
         attention_mask = torch.ones((batch_size, 1, seq_length, seq_length), device=device, dtype=torch.bool)
         
         
