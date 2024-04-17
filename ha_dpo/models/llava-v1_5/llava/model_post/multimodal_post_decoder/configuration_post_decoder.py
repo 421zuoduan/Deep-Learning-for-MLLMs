@@ -26,7 +26,7 @@ CLIP_PRETRAINED_CONFIG_ARCHIVE_MAP = {
 }
 
 
-class LlavaLlamaPostDecoderConfig(PretrainedConfig):
+class LlamaPostDecoderConfig(PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`LlavaLlamaPostDecoderModel`]. It is used to instantiate an LLaVA
     model with Post Decoder according to the specified arguments, defining the model architecture. Instantiating a configuration with the

@@ -29,7 +29,7 @@ from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
 # from llava.model import *
-from llava.model.language_model.llava_llama_post import LlavaLlamaPostDecoderForCausalLM
+from llava.model_post.language_model.llava_llama import LlavaLlamaPostDecoderForCausalLM
 from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib

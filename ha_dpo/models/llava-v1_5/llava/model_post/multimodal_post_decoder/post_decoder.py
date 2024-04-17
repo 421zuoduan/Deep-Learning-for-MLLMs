@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers.activations import ACT2FN
-from .configuration_post_decoder import LlavaLlamaPostDecoderConfig
+from .configuration_post_decoder import LlamaPostDecoderConfig
 
 
 # Copied from transformers.models.bart.modeling_bart._expand_mask
@@ -488,12 +488,6 @@ class PostDecoderCATransformerBlock(nn.Module):
         residual = hidden_states
 
         hidden_states = self.layer_norm1(hidden_states)
-        # hidden_states, attn_weights = self.self_attn(
-        #     hidden_states=hidden_states,
-        #     attention_mask=attention_mask,
-        #     causal_attention_mask=causal_attention_mask,
-        #     output_attentions=output_attentions,
-        # )
         hidden_states, attn_weights = self.cross_attn(
             image_features=image_features,
             hidden_states=hidden_states,
@@ -513,30 +507,10 @@ class PostDecoderCATransformerBlock(nn.Module):
 
 class PostDecoder(nn.Module):
     
-    def __init__(self, config: LlavaLlamaPostDecoderConfig, depth=1):
+    def __init__(self, config: LlamaPostDecoderConfig, depth=1):
         super().__init__()
         """
         copy config from configuration_llama.py LlamaConfig
-        
-        vocab_size=32000,
-        hidden_size=4096,
-        mm_hidden_size=1024,
-        intermediate_size=11008,
-        num_hidden_layers=32,
-        num_attention_heads=32,
-        num_key_value_heads=None,
-        hidden_act="silu",
-        align_hidden_act="gelu",
-        max_position_embeddings=2048,
-        initializer_range=0.02,
-        rms_norm_eps=1e-6,
-        use_cache=True,
-        pad_token_id=0,
-        bos_token_id=1,
-        eos_token_id=2,
-        pretraining_tp=1,
-        tie_word_embeddings=False,
-        rope_scaling=None,
         """
         self.config = config
         

@@ -10,7 +10,7 @@ from io import BytesIO
 from transformers import TextStreamer
 
 from llava.utils import disable_torch_init
-from llava.model.builder_repost import load_pretrained_model
+from llava.model_post.builder import load_pretrained_model
 from llava.conversation import conv_templates, SeparatorStyle
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria

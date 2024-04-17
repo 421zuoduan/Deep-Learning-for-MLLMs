@@ -1,4 +1,4 @@
-deepspeed --include localhost:4,5,6,7 --master_port=25641 ha_dpo/models/llava-v1_5/train_dpo_head.py \
+deepspeed --include localhost:0,1,4,7 --master_port=25641 ha_dpo/models/llava-v1_5/train_dpo_head.py \
     --lora_enable False \
     --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3.json \
     --model_name_or_path /home/cuiruochen/model/llava-v1.5-7b \
@@ -17,7 +17,7 @@ deepspeed --include localhost:4,5,6,7 --master_port=25641 ha_dpo/models/llava-v1
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ha_dpo/models/llava-v1_5/checkpoints/llava-train_head-bs-1-1-16-epoch-3-gpus-4 \
+    --output_dir ha_dpo/models/llava-v1_5/checkpoints/iloveu \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \

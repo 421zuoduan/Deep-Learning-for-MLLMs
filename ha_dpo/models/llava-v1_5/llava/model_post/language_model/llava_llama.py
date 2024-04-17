@@ -37,8 +37,8 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
 from ..multimodal_post_decoder.post_decoder import PostDecoder
 
-from ..llava_arch_post import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
-from ..multimodal_post_decoder.configuration_post_decoder import LlavaLlamaPostDecoderConfig
+from ..llava_arch import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
+from ..multimodal_post_decoder.configuration_post_decoder import LlamaPostDecoderConfig
 
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
@@ -266,14 +266,14 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
 
 
 
-class LlavaPostDecoderConfig(LlavaLlamaPostDecoderConfig):
+class LlavaPostDecoderConfig(LlamaPostDecoderConfig):
     model_type = "llava-post-decoder"
 
 
 class LlavaLlamaPostDecoderModel(LlavaPostDecoderMetaModel, LlamaModel):
     config_class = LlavaPostDecoderConfig
 
-    def __init__(self, config: LlavaLlamaPostDecoderConfig):
+    def __init__(self, config: LlamaPostDecoderConfig):
         super(LlavaLlamaPostDecoderModel, self).__init__(config)
 
 
@@ -313,26 +313,6 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         
-        # print("----------------------------------------------- before prepare -------------------------------------")
-        # if attention_mask is not None:
-        #     print(f"attention_mask: {attention_mask.shape}")
-        # else:
-        #     print("attention_mask: None")
-        # if images is not None:
-        #     print(f"images: {images.shape}")
-        # else:
-        #     print("images: None")
-            
-        # if inputs_embeds is not None:
-        #     print(f"input_embeds: {inputs_embeds.shape}")
-        # else:
-        #     print("input_embeds: None")
-            
-        # if input_ids is not None:
-        #     print(f"input_ids: {input_ids.shape}")
-        # else:
-        #     print("input_ids: None")
-        
         _input = images if images is not None else inputs_embeds
         
         if inputs_embeds is None:
@@ -351,13 +331,6 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
                 labels,
                 images
             )
-            
-        # print("----------------------------------------------------------- after prepare -----------------------------------------")
-        # if attention_mask is not None:
-        #     print(f"attention_mask: {attention_mask.shape}")
-        # else:
-        #     print("attention_mask: None")
-        
         
         vision_tower_image_features = self.get_model().get_vision_tower()(_input)
 
