@@ -166,7 +166,9 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
                 cur_input_ids_noim.append(cur_input_ids[image_token_indices[i]+1:image_token_indices[i+1]])
                 cur_labels_noim.append(cur_labels[image_token_indices[i]+1:image_token_indices[i+1]])
             split_sizes = [x.shape[0] for x in cur_labels_noim]
+            # cur_input_embeds 来自 text, eg. [131, 4096], 包括分隔符
             cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim))
+            # cur_input_embeds_no_im, length 2
             cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
             cur_new_input_embeds = []
             cur_new_labels = []
@@ -180,6 +182,7 @@ class LlavaPostDecoderMetaForCausalLM(ABC):
                     cur_new_input_embeds.append(cur_image_features)
                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
 
+            # cur_new_input_embeds, text tokens + vision tokens
             cur_new_input_embeds = torch.cat(cur_new_input_embeds)
             cur_new_labels = torch.cat(cur_new_labels)
 

@@ -8,7 +8,7 @@
  * @Desc: 
 '''
 import os
-from .post_decoder import PostDecoder
+from .post_decoderv2 import PostDecoder
 
 
 def build_post_decoder(post_decoder_cfg, **kwargs):

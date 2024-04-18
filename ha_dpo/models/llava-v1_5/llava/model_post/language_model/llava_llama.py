@@ -35,7 +35,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
-from ..multimodal_post_decoder.post_decoder import PostDecoder
+from ..multimodal_post_decoder.post_decoderv2 import PostDecoder
 
 from ..llava_arch import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
 from ..multimodal_post_decoder.configuration_post_decoder import LlamaPostDecoderConfig

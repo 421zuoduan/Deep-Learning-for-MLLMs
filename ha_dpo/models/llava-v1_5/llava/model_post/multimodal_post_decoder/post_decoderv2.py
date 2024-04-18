@@ -13,68 +13,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers.activations import ACT2FN
-from .configuration_post_decoder import LlavaLlamaPostDecoderConfig
+from .configuration_post_decoder import LlamaPostDecoderConfig
 
 
-# Copied from transformers.models.bart.modeling_bart._expand_mask
-def expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] = None):
-    """
-    Expands attention_mask from `[bsz, seq_len]` to `[bsz, 1, tgt_seq_len, src_seq_len]`.
-    """
-    bsz, src_len = mask.size()
-    tgt_len = tgt_len if tgt_len is not None else src_len
-
-    expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
-
-    inverted_mask = 1.0 - expanded_mask
-
-    return inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
-
-# Copied from transformers.models.blip_2.modeling_clip.get_extended_attention_mask
-def get_extended_attention_mask(
-    self,
-    attention_mask: torch.Tensor,
-    input_shape: Tuple[int],
-    device: torch.device,
-    has_query: bool = False,
-) -> torch.Tensor:
-    """
-    Makes broadcastable attention and causal masks so that future and masked tokens are ignored.
-
-    Arguments:
-        attention_mask (`torch.Tensor`):
-            Mask with ones indicating tokens to attend to, zeros for tokens to ignore.
-        input_shape (`Tuple[int]`):
-            The shape of the input to the model.
-        device (`torch.device`):
-            The device of the input to the model.
-
-    Returns:
-        `torch.Tensor` The extended attention mask, with a the same dtype as `attention_mask.dtype`.
-    """
-    # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
-    # ourselves in which case we just need to make it broadcastable to all heads.
-    if attention_mask.dim() == 3:
-        extended_attention_mask = attention_mask[:, None, :, :]
-    elif attention_mask.dim() == 2:
-        # Provided a padding mask of dimensions [batch_size, seq_length]
-        # - the model is an encoder, so make the mask broadcastable to [batch_size, num_heads, seq_length, seq_length]
-        extended_attention_mask = attention_mask[:, None, None, :]
-    else:
-        raise ValueError(
-            "Wrong shape for input_ids (shape {}) or attention_mask (shape {})".format(
-                input_shape, attention_mask.shape
-            )
-        )
-
-    # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
-    # masked positions, this operation will create a tensor which is 0.0 for
-    # positions we want to attend and -10000.0 for masked positions.
-    # Since we are adding it to the raw scores before the softmax, this is
-    # effectively the same as removing these entirely.
-    extended_attention_mask = extended_attention_mask.to(dtype=self.dtype)  # fp16 compatibility
-    extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
-    return extended_attention_mask
 
 # Copied from transformers.models.bart.modeling_bart._make_causal_mask
 def make_causal_mask(
@@ -462,12 +403,61 @@ class PostDecoderCATransformerBlock(nn.Module):
         self.mlp = PostDecoderMLP(hidden_size, intermediate_size, hidden_act)
         self.layer_norm2 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
         
-    def generate_causal_attention_mask(seq_image, seq_all):
+    def generate_causal_cross_attention_mask(self, seq_image, seq_all):
         seq_text = seq_all - seq_image
         causal_mask = torch.tril(torch.ones(seq_image, seq_image))
-        ones_matrix = torch.zeros(seq_text, seq_image)
-        mask_matrix = torch.cat((causal_mask, ones_matrix), dim=0)
+        ones_matrix = torch.ones(seq_text, seq_image)
+        mask_matrix = torch.cat((ones_matrix, causal_mask), dim=0)
         return mask_matrix
+    
+    # Copied from transformers.models.bart.modeling_bart._expand_mask
+    def expand_mask(self, mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] = None):
+        """
+        Expands attention_mask from `[bsz, seq_len]` to `[bsz, 1, tgt_seq_len, src_seq_len]`.
+        """
+        bsz, src_len = mask.size()
+        tgt_len = tgt_len if tgt_len is not None else src_len
+
+        expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
+
+        inverted_mask = 1.0 - expanded_mask
+
+        return inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
+    
+    # Copied from transformers.models.blip_2.modeling_clip.get_extended_attention_mask
+    def get_extended_attention_mask(
+        self,
+        attention_mask: torch.Tensor,
+        input_shape: Tuple[int],
+        device: torch.device,
+        dtype: torch.dtype,
+        has_query: bool = False,
+    ) -> torch.Tensor:
+        # We can provide a cross-attention causal mask of dimensions [batch_size, from_seq_length, to_seq_length]
+        # ourselves in which case we just need to make it broadcastable to all heads.
+        if attention_mask.dim() == 3:
+            extended_attention_mask = attention_mask[:, None, :, :]
+        elif attention_mask.dim() == 2:
+            # Provided a padding mask of dimensions [batch_size, seq_length]
+            # - the model is an encoder, so make the mask broadcastable to [batch_size, num_heads, seq_length, seq_length]
+            extended_attention_mask = attention_mask[None, None, :, :]
+        else:
+            raise ValueError(
+                "Wrong shape for input_ids (shape {}) or attention_mask (shape {})".format(
+                    input_shape, attention_mask.shape
+                )
+            )
+
+        # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
+        # masked positions, this operation will create a tensor which is 0.0 for
+        # positions we want to attend and -10000.0 for masked positions.
+        # Since we are adding it to the raw scores before the softmax, this is
+        # effectively the same as removing these entirely.
+        extended_attention_mask = extended_attention_mask.to(dtype=dtype)  # fp16 compatibility
+        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        extended_attention_mask = extended_attention_mask.repeat(input_shape[0], 1, 1, 1)
+        extended_attention_mask = extended_attention_mask.to(device)
+        return extended_attention_mask
 
     def forward(
         self,
@@ -493,6 +483,31 @@ class PostDecoderCATransformerBlock(nn.Module):
                 returned tensors for more detail.
         """
         residual = hidden_states
+        
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
+        elif input_ids is not None:
+            batch_size, seq_length = input_ids.shape
+        elif inputs_embeds is not None:
+            batch_size, seq_length, _ = inputs_embeds.shape
+        else:
+            raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
+        
+        # TODO: 生成 cross attention 在 vision tokens 上所需的 causal attention mask
+        # 这里是在 CA 中生成的, 其实可以在 PostDecoder 类中生成, 但是这里先这样写
+        # 使用类内方法 generate_causal_cross_attention_mask
+        # TODO: 测试时 hidden_states.size(1) 可能为 1, 需要换一种 causal_cross_attention_mask 的生成方式
+        print(f"image_features.size(1): {image_features.size(1)}")
+        print(f"hidden_states.size(1): {hidden_states.size(1)}")
+        
+        if causal_attention_mask is None:
+            causal_cross_attention_mask = self.generate_causal_cross_attention_mask(image_features.size(1), hidden_states.size(1))
+            # causal_cross_attention_mask = self.expand_mask(causal_cross_attention_mask, dtype=image_features.dtype, tgt_len=image_features.size(1))
+            causal_cross_attention_mask = self.get_extended_attention_mask(causal_cross_attention_mask, (batch_size, seq_length), device=image_features.device, dtype=image_features.dtype)
+        else:
+            causal_cross_attention_mask = causal_attention_mask
+            # causal_cross_attention_mask = self.expand_mask(causal_cross_attention_mask, dtype=image_features.dtype, tgt_len=image_features.size(1))
+            causal_cross_attention_mask = self.get_extended_attention_mask(causal_cross_attention_mask, (batch_size, seq_length), device=image_features.device, dtype=image_features.dtype)
 
         hidden_states = self.layer_norm1(hidden_states)
         # hidden_states, attn_weights = self.self_attn(
@@ -502,14 +517,11 @@ class PostDecoderCATransformerBlock(nn.Module):
         #     output_attentions=output_attentions,
         # )
         
-        # if causal_attention_mask is None:
-        #     causal_attention_mask = self.generate_causal_attention_mask(image_features.size(1), hidden_states.size(1))
-        
         hidden_states, attn_weights = self.cross_attn(
             image_features=image_features,
             hidden_states=hidden_states,
             attention_mask=None,
-            causal_attention_mask=causal_attention_mask,
+            causal_attention_mask=causal_cross_attention_mask,
             output_attentions=output_attentions,
         )
         hidden_states = residual + hidden_states
@@ -524,30 +536,10 @@ class PostDecoderCATransformerBlock(nn.Module):
 
 class PostDecoder(nn.Module):
     
-    def __init__(self, config: LlavaLlamaPostDecoderConfig, depth=1):
+    def __init__(self, config: LlamaPostDecoderConfig, depth=1):
         super().__init__()
         """
         copy config from configuration_llama.py LlamaConfig
-        
-        vocab_size=32000,
-        hidden_size=4096,
-        mm_hidden_size=1024,
-        intermediate_size=11008,
-        num_hidden_layers=32,
-        num_attention_heads=32,
-        num_key_value_heads=None,
-        hidden_act="silu",
-        align_hidden_act="gelu",
-        max_position_embeddings=2048,
-        initializer_range=0.02,
-        rms_norm_eps=1e-6,
-        use_cache=True,
-        pad_token_id=0,
-        bos_token_id=1,
-        eos_token_id=2,
-        pretraining_tp=1,
-        tie_word_embeddings=False,
-        rope_scaling=None,
         """
         self.config = config
         
@@ -587,24 +579,28 @@ class PostDecoder(nn.Module):
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         
         # 这里输入的attention_mask已经是 bs, token_nums, channels的维度了, 是已经在llamamodel里的attention mask
-        # 上面的mask在self attention中可以直接用
+        # 上面的 mask 在self attention中可以直接用
         # cross attention中的attention mask需要自己写, 这里还没有写完
-        if attention_mask is None:
-            attention_mask = torch.ones(
-                (batch_size, seq_length), dtype=torch.bool, device=inputs_embeds.device
-            )
-        ca_attention_mask = prepare_decoder_attention_mask(
-            attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
-        )
-
-            
-            
-            
-        attention_mask = torch.ones((batch_size, 1, seq_length, seq_length), device=device, dtype=torch.bool)
+        # prepare_inputs_labels_for_multimodal 的输出, 先 text token 后 vision token, cross attention 要取后 576 vision tokens 
+        # TODO: 1. 取后 576 个 token
+        #       2. 生成 cross causal attention mask, 即需要生成 causal attention mask
+        #       3. 不加入有关 padding 的 attention mask, 即 PostDecoder 类中传入 attention mask 为 None
+        #       4. 将 causal attention mask 与 attn 矩阵相加
+        #       5. 继续执行 cross attention 过程
         
+        # if attention_mask is None:
+        #     attention_mask = torch.ones(
+        #         (batch_size, seq_length), dtype=torch.bool, device=inputs_embeds.device
+        #     )
+        # ca_attention_mask = prepare_decoder_attention_mask(
+        #     attention_mask, (batch_size, seq_length), inputs_embeds, past_key_values_length
+        # )
+        # attention_mask = torch.ones((batch_size, 1, seq_length, seq_length), device=device, dtype=torch.bool)
+
+        # causal_attention_mask_For_ca = make_causal_mask(attention_mask, (batch_size, seq_length), hidden_states, past_key_values_length)
         
         for blk in self.blocks:
-            outputs = blk(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds, causal_attention_mask, pretraining_tp=self.config.pretraining_tp)
+            outputs = blk(image_features, hidden_states, input_ids, None, position_ids, past_key_values, inputs_embeds, causal_attention_mask, pretraining_tp=self.config.pretraining_tp)
             
         outputs = outputs + hidden_states
         
