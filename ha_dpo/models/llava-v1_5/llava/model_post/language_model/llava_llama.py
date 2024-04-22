@@ -35,7 +35,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
-from ..multimodal_post_decoder.post_decoderv2 import PostDecoder
+from ..multimodal_post_decoder.post_decoder_nomask import PostDecoder
 
 from ..llava_arch import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
 from ..multimodal_post_decoder.configuration_post_decoder import LlamaPostDecoderConfig
@@ -315,6 +315,30 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         
         _input = images if images is not None else inputs_embeds
         
+        # print("----------------------------------------------- before mulimodal ------------------------------------------------------")
+        # if input_ids is not None:
+        #     print(f"input_ids.shape: {input_ids.shape}")
+        # else:
+        #     print("input_ids is None")
+        # if position_ids is not None:
+        #     print(f"position_ids.shape: {position_ids.shape}")
+        # else:
+        #     print("position_ids is None")
+        # if attention_mask is not None:
+        #     print(f"attention_mask.shape: {attention_mask.shape}")
+        # else:
+        #     print("attention_mask is None")
+        # if past_key_values is not None:
+        #     print(f"past_key_values.shape: {len(past_key_values)}")
+        # else:
+        #     print("past_key_values is None")
+        # if inputs_embeds is not None:
+        #     print(f"inputs_embeds.shape: {inputs_embeds.shape}")
+        # else:
+        #     print("inputs_embeds is None")
+        
+        
+        
         if inputs_embeds is None:
             (
                 input_ids,
@@ -331,6 +355,28 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
                 labels,
                 images
             )
+            
+        # print("----------------------------------------------- after mulimodal ------------------------------------------------------")
+        # if input_ids is not None:
+        #     print(f"input_ids.shape: {input_ids.shape}")
+        # else:
+        #     print("input_ids is None")
+        # if position_ids is not None:
+        #     print(f"position_ids.shape: {position_ids.shape}")
+        # else:
+        #     print("position_ids is None")
+        # if attention_mask is not None:
+        #     print(f"attention_mask.shape: {attention_mask.shape}")
+        # else:
+        #     print("attention_mask is None")
+        # if past_key_values is not None:
+        #     print(f"past_key_values.shape: {len(past_key_values)}")
+        # else:
+        #     print("past_key_values is None")
+        # if inputs_embeds is not None:
+        #     print(f"inputs_embeds.shape: {inputs_embeds.shape}")
+        # else:
+        #     print("inputs_embeds is None")
         
         vision_tower_image_features = self.get_model().get_vision_tower()(_input)
 
