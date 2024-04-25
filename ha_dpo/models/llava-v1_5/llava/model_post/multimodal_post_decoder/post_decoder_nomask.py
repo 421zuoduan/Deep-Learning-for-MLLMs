@@ -357,6 +357,50 @@ class PostDecoder(nn.Module):
         for blk in self.blocks:
             outputs = blk(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds, causal_attention_mask, pretraining_tp=self.config.pretraining_tp)
             
+        # _outputs = outputs
+            
         outputs = outputs + hidden_states
+        
+        
+        
+        # # Next For loop is for calculating R-square values for each sample in the batch
+        # # Calculate R-square for each sample in the batch
+        # batch_size = hidden_states.size(0)
+        # r_square_values = []
+        
+        # for i in range(batch_size):
+        #     # Select current sample
+        #     y_true = hidden_states[i]         # (seq_length, hidden_size)
+        #     y_pred = _outputs[i]               # (seq_length, hidden_size)
+            
+        #     # 计算所有元素的均值作为 mean_y_true
+        #     # # Calculate means along the seq_length dimension
+        #     # mean_y_true = torch.mean(y_true, dim=0, keepdim=True)  # (1, hidden_size)
+        #     # mean_y_true = torch.mean(mean_y_true, dim=1, keepdim=True).flatten(-1)  # (1, hidden_size)
+            
+        #     # # Calculate numerator and denominator
+        #     # numerator = torch.sum((y_true - y_pred)**2)
+        #     # denominator = torch.sum((y_true - mean_y_true)**2)
+            
+        #     # # Calculate R-square value
+        #     # r_square = 1 - (numerator / denominator)
+        #     # r_square_values.append(r_square.item())
+            
+        #     # 计算某一维度上的均值作为 mean_y_true
+        #     y_true = torch.mean(y_true, dim=0, keepdim=True)
+        #     y_pred = torch.mean(y_pred, dim=0, keepdim=True)
+            
+        #     mean_y_true = torch.mean(y_true, dim=1, keepdim=True)
+            
+        #     numerator = torch.sum((y_true - y_pred)**2)
+        #     denominator = torch.sum((y_true - mean_y_true)**2)
+            
+        #     r_square = 1 - (numerator / denominator)
+        #     r_square_values.append(r_square.item())
+        #     print("R-square value:", r_square.item())
+        
+        # # Convert r_square_values to tensor and print
+        # r_square_tensor = torch.tensor(r_square_values)
+        # print("R-square values:", r_square_tensor)
         
         return outputs
