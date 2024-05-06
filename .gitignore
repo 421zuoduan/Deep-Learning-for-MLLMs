@@ -3,6 +3,8 @@
 
 *.log
 
+*.tar
+
 nohup.out
 
 wandb

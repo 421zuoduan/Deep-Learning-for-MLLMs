@@ -1,18 +1,19 @@
-ersion1='v8'
-time1='20240425'
+version1='v8'
+time1='20240505'
 train_bs1='4'
 eval_bs1='1'
 gradient_accumulation_steps1='8'
 epoch1='1'
 localhost='4,5,6,7'
 gpu1='4'
-lr1='5e-6'
+lr1='2e-5'
 
 source_folder="/home/cuiruochen/model/llava-v1.5-7b-----------to-be-copied"
 target_folder1="/home/cuiruochen/model/llava-v1.5-7b-full-datasets-train_post${version1}-${time1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
-output_dir1="./checkpoints//llava-post-decoder-${time1}-${version1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
+output_dir1="ha_dpo/models/llava-v1_5/checkpoints/llava-post-decoder-${time1}-${version1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
 # 检查目标文件夹路径是否正确
 echo "目标文件夹路径：$target_folder1"
+echo "保存文件夹路径: $output_dir1"
 
 # 复制文件夹到目标路径, 如果已经存在路径, 会嵌套复制. 所以需要检查是否已经存在
 source_folder="/home/cuiruochen/model/llava-v1.5-7b-----------to-be-copied"
@@ -26,7 +27,7 @@ else
 fi
 echo "操作完成"
 
-deepspeed --include localhost:${localhost} ha_dpo/models/llava-v1_5/train_llava_post.py \
+deepspeed --include localhost:${localhost} ha_dpo/models/llava-v1_5/train_llava_post_save_revising.py \
     --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3.json \
     --model_name_or_path ${target_folder1} \
     --version v1 \
@@ -66,10 +67,18 @@ deepspeed --include localhost:${localhost} ha_dpo/models/llava-v1_5/train_llava_
     --lazy_preprocess True \
     --report_to wandb
 
-python ha_dpo/models/llava-v1_5/replace_bin.py --tune_stage 1 \
-    --path_model_state_dict ${target_folder1}/pytorch_model-00002-of-00002.bin \
-    --path_non_lora_state_dict ${output_dir1}/non_lora_trainables.bin
+# python ha_dpo/models/llava-v1_5/replace_bin.py --tune_stage 1 \
+#     --path_model_state_dict ${target_folder1}/pytorch_model-00002-of-00002.bin \
+#     --path_non_lora_state_dict ${output_dir1}/non_lora_trainables.bin
 
 wait
+
+# export CUDA_VISIBLE_DEVICES=${localhost}
+
+# torchrun --nproc_per_node 4 --master_port $RANDOM ha_dpo/models/llava-v1_5/pope_eval_post.py \
+#     --coco_path ha_dpo/data/coco2014 \
+#     --pope_path ha_dpo/data/POPE \
+#     --model-path ${output_dir1} \
+#     --set popular
 
 CUDA_VISIBLE_DEVICES=${localhost} python 哥们,留四张卡,跑大模型.py --size 30000 --gpus 4 --interval 0.01

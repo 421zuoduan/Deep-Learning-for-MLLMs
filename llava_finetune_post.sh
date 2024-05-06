@@ -333,7 +333,7 @@ CUDA_VISIBLE_DEVICES=${localhost} torchrun --nproc_per_node ${gpu1} --master_por
 #     --model-path ${target_folder2} \
 #     --set popular
 
-# wait
+wait
 
 CUDA_VISIBLE_DEVICES=${localhost} python 哥们,留四张卡,跑大模型.py --size 30000 --gpus 4 --interval 0.01
 
