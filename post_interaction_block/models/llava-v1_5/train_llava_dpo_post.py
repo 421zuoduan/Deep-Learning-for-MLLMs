@@ -1,5 +1,14 @@
+#!/usr/bin/env python 
+# -*- coding:utf-8 -*- 
+'''
+ * @Author: Ruochen Cui 
+ * @Date: 2024-03-27 17:35:02 
+ * @Last Modified by:   Ruochen Cui 
+ * @Last Modified time: 2024-03-27 17:35:02 
+ * @Desc: 
+'''
 import os
-os.environ["WANDB_PROJECT"]="ha-dpo-head"
+os.environ["WANDB_PROJECT"]="llava-post-hadpo"
 
 import json
 import copy
@@ -19,9 +28,8 @@ import transformers
 from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
-# from llava.model import *
-from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
-from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
+from llava.model import *
+from llava.model_post.language_model.llava_llama import LlavaLlamaPIBForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib
 from llava.train.train import preprocess_multimodal, preprocess
@@ -35,17 +43,12 @@ from peft import (
     set_peft_model_state_dict,
 )
 
-from ha_dpo.trainer.llava_dpo_trainer_head import LlavaDPOTrainer
+import sys
+sys.path.append('.')
 
-# import debugpy
-# try:
-#     # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
-#     debugpy.listen(("localhost", 9501))
-#     print("Waiting for debugger attach")
-#     debugpy.wait_for_client()
-# except Exception as e:
-#     pass
+from post_interaction_block.trainer.llava_dpo_trainer_post import LlavaDPOTrainer
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 local_rank = None
         
@@ -56,6 +59,7 @@ class ModelArguments:
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
     tune_lm_head: bool = field(default=False)
+    tune_post_interaction_block: bool = field(default=False)
     vision_tower: Optional[str] = field(default=None)
     mm_vision_select_layer: Optional[int] = field(default=-1)   # default to the last layer
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
@@ -479,7 +483,7 @@ class SaverCallback(TrainerCallback):
     "A callback that prints a message at the end of training"
     def on_train_end(self, args, state, control, **kwargs):
         # save model
-        if isinstance(kwargs['model'], LlavaLlamaForCausalLM):
+        if isinstance(kwargs['model'], LlavaLlamaPIBForCausalLM):
             torch.cuda.synchronize()
             state_dict = get_peft_state_maybe_zero_3(
                 kwargs['model'].named_parameters(), "none"
@@ -533,12 +537,11 @@ def setup_llava_model(model_args, data_args, script_args):
             model = LlavaMPTForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 config=config,
-                
                 cache_dir=script_args.cache_dir,
                 **bnb_model_from_pretrained_args
             )
         else:
-            model = LlavaLlamaForCausalLM.from_pretrained(
+            model = LlavaLlamaPIBForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=script_args.cache_dir,
                 **bnb_model_from_pretrained_args
@@ -662,6 +665,14 @@ def setup_llava_model(model_args, data_args, script_args):
         script_args.use_im_start_end = model_args.mm_use_im_start_end
         model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
         model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
+        
+    if model_args.tune_post_interaction_block:
+        if hasattr(model, "post_interaction_block"):
+            model.post_interaction_block.requires_grad_(True)
+            for p in model.post_interaction_block.parameters():
+                p.requires_grad = True
+        else:
+            Warning("No post interaction block found in the model.")
 
     if model_args.tune_lm_head:
         model.lm_head.requires_grad_(True)
@@ -701,16 +712,16 @@ def main():
         data_args=data_args,
         script_args=script_args,
     )
-    # script_args.lora_enable = False
-    # llava_ref_model, _ = setup_llava_model(
-    #     model_args=model_args, 
-    #     data_args=data_args,
-    #     script_args=script_args,
-    # )
+    script_args.lora_enable = False
+    llava_ref_model, _ = setup_llava_model(
+        model_args=model_args, 
+        data_args=data_args,
+        script_args=script_args,
+    )
     
-    # # freeze reference model
-    # for n,p in llava_ref_model.named_parameters():
-    #     p.requires_grad = False
+    # freeze reference model
+    for n,p in llava_ref_model.named_parameters():
+        p.requires_grad = False
     
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
@@ -756,7 +767,7 @@ def main():
     # initialize the DPO trainer
     dpo_trainer = LlavaDPOTrainer(
         model=llava_policy_model,
-        ref_model=None,
+        ref_model=llava_ref_model,
         args=training_args,
         beta=script_args.beta,
         tokenizer=tokenizer,

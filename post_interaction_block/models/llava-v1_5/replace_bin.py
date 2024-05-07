@@ -13,17 +13,17 @@ import torch
 def replace_bin(config):
     
     if config.tune_stage == 0:
-        add_post_decoder = True
+        add_PIB = True
         replace_head = True
-        replace_post_decoder = True
+        replace_PIB = True
     elif config.tune_stage == 1:
-        add_post_decoder = True
+        add_PIB = True
         replace_head = False
-        replace_post_decoder = True
+        replace_PIB = True
     elif config.tune_stage == 2:
-        add_post_decoder = False
+        add_PIB = False
         replace_head = True
-        replace_post_decoder = True
+        replace_PIB = True
     else:
         raise ValueError("tune_stage error")
     
@@ -37,7 +37,7 @@ def replace_bin(config):
     
     print("Load non_lora_state_dict and model_state_dict successfully")
 
-    if add_post_decoder:
+    if add_PIB:
         # 检查并添加非重复参数
         for key, value in non_lora_state_dict.items():
             if key not in model_state_dict:
@@ -51,18 +51,18 @@ def replace_bin(config):
         else:
             raise ValueError("lm_head.weight not found in non_lora_state_dict")
         
-    if replace_post_decoder:
-        # 找到non_lora_state_dict中包括'post_decoder'字符的所有参数
-        post_decoder_keys = [k for k in non_lora_state_dict.keys() if 'post_decoder'.lower() in k]
+    if replace_PIB:
+        # 找到non_lora_state_dict中包括'post_interaction'字符的所有参数
+        PIB_keys = [k for k in non_lora_state_dict.keys() if 'post_interaction'.lower() in k]
         
         # 对于找到的所有参数, 检查是否在model_state_dict中, 如果在则替换, 否则报错
-        for key in post_decoder_keys:
+        for key in PIB_keys:
             if key in model_state_dict and key in non_lora_state_dict:
                 model_state_dict[key] = non_lora_state_dict[key]
             else:
                 raise ValueError(f"{key} not found in model_state_dict")
             
-        print("Replace post_decoder finished")
+        print("Replace post_interaction_block finished")
             
 
     # 保存修改后的模型参数

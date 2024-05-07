@@ -10,7 +10,7 @@ from io import BytesIO
 from transformers import TextStreamer
 
 from llava.utils import disable_torch_init
-from llava.model_post.builder import load_pretrained_model
+from llava.model.builder import load_pretrained_model
 from llava.conversation import conv_templates, SeparatorStyle
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
@@ -26,8 +26,7 @@ def main(args):
 
     local_rank = int(os.environ["LOCAL_RANK"])
     device = f"cuda:{local_rank}"
-    # model_name = get_model_name_from_path(args.model_path)
-    model_name = 'llava-post-decoder'
+    model_name = get_model_name_from_path(args.model_path)
     if args.model_base is None:
         tokenizer, model, image_processor, context_len = load_pretrained_model(
             model_path=args.model_path, 
@@ -37,20 +36,11 @@ def main(args):
             load_4bit=args.load_4bit, 
             device=device
         )
-    elif args.model_base is not None and args.train_lora:
+    else:
         tokenizer, model, image_processor, context_len = load_pretrained_model(
             model_path=args.model_path,
             model_base=args.model_base, 
             model_name="llava_lora_model",
-            load_8bit=args.load_8bit, 
-            load_4bit=args.load_4bit, 
-            device=device
-        )
-    else:
-        tokenizer, model, image_processor, context_len = load_pretrained_model(
-            model_path=args.model_path, 
-            model_base=args.model_base, 
-            model_name=model_name,
             load_8bit=args.load_8bit, 
             load_4bit=args.load_4bit, 
             device=device
@@ -156,7 +146,7 @@ def main(args):
         # sort according to question_id
         results_all_rank = sorted(results_all_rank, key=lambda x:x["question_id"])
         res_file = f"pope_{args.set}.jsonl"
-        with open(os.path.join("./ha_dpo/models/llava-v1_5", res_file), "w") as f:
+        with open(os.path.join("./post_interaction_block/models/llava-v1_5", res_file), "w") as f:
             for res in results_all_rank:
                 f.write(json.dumps(res)+'\n')
 
@@ -167,7 +157,6 @@ if __name__ == "__main__":
     parser.add_argument("--model-base", type=str, default=None)
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
-    parser.add_argument("--train-lora", action="store_true")
     
     parser.add_argument("--pope_path", type=str, required=True)
     parser.add_argument("--coco_path", type=str, required=True)

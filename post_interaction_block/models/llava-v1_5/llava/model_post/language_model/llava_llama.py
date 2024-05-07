@@ -35,14 +35,14 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
-from ..multimodal_post_decoder.post_decoder_nomask import PostDecoder
+from ..multimodal_post_interaction_block.post_interaction_block import PostInteractionBlock
 
-from ..llava_arch import LlavaPostDecoderMetaModel, LlavaPostDecoderMetaForCausalLM
-from ..multimodal_post_decoder.configuration_post_decoder import LlamaPostDecoderConfig
+from ..llava_arch import LlavaPIBMetaModel, LlavaPIBMetaForCausalLM
+from ..multimodal_post_interaction_block.configuration_post_interaction_block import LlamaPIBConfig
 
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
-_CONFIG_FOR_DOC = "LlamaPostDecoderConfig"
+_CONFIG_FOR_DOC = "LlamaPIBConfig"
 
 
 LLAMA_INPUTS_DOCSTRING = r"""
@@ -109,8 +109,8 @@ LLAMA_INPUTS_DOCSTRING = r"""
 """
 
 
-# add post decoder to forward function
-class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
+# add post interaction block to forward function
+class LlamaPIBForCausalLM(LlamaPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
     # _tied_weights_keys = ["post_decoder.weight"]
     # _tied_weights_keys = ["lm_head.weight", "post_decoder.weight"]
@@ -190,14 +190,14 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
         
         hidden_states = backbone_outputs[0]
         
-        post_deocder_outputs = self.post_decoder(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
+        post_interaction_block_outputs = self.post_interaction_block(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
         
         if self.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
-            logits = [F.linear(post_deocder_outputs, lm_head_slices[i]) for i in range(self.pretraining_tp)]
+            logits = [F.linear(post_interaction_block_outputs, lm_head_slices[i]) for i in range(self.pretraining_tp)]
             logits = torch.cat(logits, dim=-1)
         else:
-            logits = self.lm_head(post_deocder_outputs)
+            logits = self.lm_head(post_interaction_block_outputs)
         logits = logits.float()
 
         loss = None
@@ -266,34 +266,34 @@ class LlamaPostDecoderForCausalLM(LlamaPreTrainedModel):
 
 
 
-class LlavaPostDecoderConfig(LlamaPostDecoderConfig):
-    model_type = "llava-post-decoder"
+class LlavaPIBConfig(LlamaPIBConfig):
+    model_type = "llava-post-interaction"
 
 
-class LlavaLlamaPostDecoderModel(LlavaPostDecoderMetaModel, LlamaModel):
-    config_class = LlavaPostDecoderConfig
+class LlavaLlamaPIBModel(LlavaPIBMetaModel, LlamaModel):
+    config_class = LlavaPIBConfig
 
-    def __init__(self, config: LlamaPostDecoderConfig):
-        super(LlavaLlamaPostDecoderModel, self).__init__(config)
+    def __init__(self, config: LlamaPIBConfig):
+        super(LlavaLlamaPIBModel, self).__init__(config)
 
 
-# This is Llava-like model with the post-decoder
-class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDecoderMetaForCausalLM):
-    config_class = LlavaPostDecoderConfig
+# This is Llava-like model with the post-interaction-block
+class LlavaLlamaPIBForCausalLM(LlamaPIBForCausalLM, LlavaPIBMetaForCausalLM):
+    config_class = LlavaPIBConfig
 
     def __init__(self, config):
-        super(LlamaPostDecoderForCausalLM, self).__init__(config)
-        self.model = LlavaLlamaPostDecoderModel(config)
+        super(LlamaPIBForCausalLM, self).__init__(config)
+        self.model = LlavaLlamaPIBModel(config)
         self.pretraining_tp = config.pretraining_tp
         self.vocab_size = config.vocab_size
-        self.post_decoder = PostDecoder(config)
+        self.post_interaction_block = PostInteractionBlock(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
         
-    def get_post_decoder(self):
-        return self.post_decoder
+    def get_post_interaction_block(self):
+        return self.post_interaction_block
 
     def get_model(self):
         return self.model
@@ -336,6 +336,10 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
         #     print(f"inputs_embeds.shape: {inputs_embeds.shape}")
         # else:
         #     print("inputs_embeds is None")
+        # if images is not None:
+        #     print(f"images.shape: {images.shape}")
+        # else:
+        #     print("images is None")
         
         
         
@@ -406,5 +410,5 @@ class LlavaLlamaPostDecoderForCausalLM(LlamaPostDecoderForCausalLM, LlavaPostDec
 
 
 
-AutoConfig.register("llava-post-decoder", LlavaPostDecoderConfig)
-AutoModelForCausalLM.register(LlavaPostDecoderConfig, LlavaLlamaPostDecoderForCausalLM)
+AutoConfig.register("llava-post-interaction", LlavaPIBConfig)
+AutoModelForCausalLM.register(LlavaPIBConfig, LlavaLlamaPIBForCausalLM)

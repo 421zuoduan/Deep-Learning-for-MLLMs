@@ -1,14 +1,14 @@
 # export CUDA_VISIBLE_DEVICES=1,3,4,5,7
 
-deepspeed --include localhost:1,2,3,4,5,6,7 ha_dpo/models/llava-v1_5/train_dpo.py \
+deepspeed --include localhost:1,2,3,4,5,6,7 post_interaction_block/models/llava-v1_5/train_dpo.py \
     --lora_enable False \
     --mm_projector_lr 2e-5 \
-    --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3_offload.json \
+    --deepspeed post_interaction_block/models/llava-v1_5/scripts/zero3_offload.json \
     --model_name_or_path /home/cuiruochen/model/llava-v1.5-7b \
     --version v1 \
-    --vg_path ha_dpo/data/VG \
-    --desc_data_path ha_dpo/data/hadpo/llava-v1.5/desc_data.json \
-    --pope_data_path ha_dpo/data/hadpo/llava-v1.5/pope_data.json \
+    --vg_path post_interaction_block/data/VG \
+    --desc_data_path post_interaction_block/data/hadpo/llava-v1.5/desc_data.json \
+    --pope_data_path post_interaction_block/data/hadpo/llava-v1.5/pope_data.json \
     --vision_tower /home/cuiruochen/model/clip-vit-large-patch14-336 \
     --freeze_backbone True \
     --tune_mm_mlp_adapter False \
@@ -21,7 +21,7 @@ deepspeed --include localhost:1,2,3,4,5,6,7 ha_dpo/models/llava-v1_5/train_dpo.p
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ha_dpo/models/llava-v1_5/checkpoints/llava-origin \
+    --output_dir post_interaction_block/models/llava-v1_5/checkpoints/llava-origin \
     --num_train_epochs 1 \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \

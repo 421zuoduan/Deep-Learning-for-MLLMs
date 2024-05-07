@@ -10,7 +10,7 @@ lr1='2e-5'
 
 source_folder="/home/cuiruochen/model/llava-v1.5-7b-----------to-be-copied"
 target_folder1="/home/cuiruochen/model/llava-v1.5-7b-full-datasets-train_post${version1}-${time1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
-output_dir1="ha_dpo/models/llava-v1_5/checkpoints/llava-post-decoder-${time1}-${version1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
+output_dir1="post_interaction_block/models/llava-v1_5/checkpoints/llava-post-decoder-${time1}-${version1}-bs-${train_bs1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${lr1}"
 # 检查目标文件夹路径是否正确
 echo "目标文件夹路径：$target_folder1"
 echo "保存文件夹路径: $output_dir1"
@@ -27,8 +27,8 @@ else
 fi
 echo "操作完成"
 
-deepspeed --include localhost:${localhost} ha_dpo/models/llava-v1_5/train_llava_post_save_revising.py \
-    --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3.json \
+deepspeed --include localhost:${localhost} post_interaction_block/models/llava-v1_5/train_llava_post_save_revising.py \
+    --deepspeed post_interaction_block/models/llava-v1_5/scripts/zero3.json \
     --model_name_or_path ${target_folder1} \
     --version v1 \
     --data_path /home/cuiruochen/LLaVA/playground/data/llava_v1_5_mix665k.json \
@@ -67,7 +67,7 @@ deepspeed --include localhost:${localhost} ha_dpo/models/llava-v1_5/train_llava_
     --lazy_preprocess True \
     --report_to wandb
 
-# python ha_dpo/models/llava-v1_5/replace_bin.py --tune_stage 1 \
+# python post_interaction_block/models/llava-v1_5/replace_bin.py --tune_stage 1 \
 #     --path_model_state_dict ${target_folder1}/pytorch_model-00002-of-00002.bin \
 #     --path_non_lora_state_dict ${output_dir1}/non_lora_trainables.bin
 
@@ -75,9 +75,9 @@ wait
 
 # export CUDA_VISIBLE_DEVICES=${localhost}
 
-# torchrun --nproc_per_node 4 --master_port $RANDOM ha_dpo/models/llava-v1_5/pope_eval_post.py \
-#     --coco_path ha_dpo/data/coco2014 \
-#     --pope_path ha_dpo/data/POPE \
+# torchrun --nproc_per_node 4 --master_port $RANDOM post_interaction_block/models/llava-v1_5/pope_eval_post.py \
+#     --coco_path post_interaction_block/data/coco2014 \
+#     --pope_path post_interaction_block/data/POPE \
 #     --model-path ${output_dir1} \
 #     --set popular
 

@@ -1,11 +1,11 @@
-deepspeed --include localhost:0,1,4,7 --master_port=25641 ha_dpo/models/llava-v1_5/train_dpo_head.py \
+deepspeed --include localhost:0,1,4,7 --master_port=25641 post_interaction_block/models/llava-v1_5/train_dpo_head.py \
     --lora_enable False \
-    --deepspeed ha_dpo/models/llava-v1_5/scripts/zero3.json \
+    --deepspeed post_interaction_block/models/llava-v1_5/scripts/zero3.json \
     --model_name_or_path /home/cuiruochen/model/llava-v1.5-7b \
     --version v1 \
-    --vg_path ha_dpo/data/VG \
-    --desc_data_path ha_dpo/data/hadpo/llava-v1.5/desc_data.json \
-    --pope_data_path ha_dpo/data/hadpo/llava-v1.5/pope_data.json \
+    --vg_path post_interaction_block/data/VG \
+    --desc_data_path post_interaction_block/data/hadpo/llava-v1.5/desc_data.json \
+    --pope_data_path post_interaction_block/data/hadpo/llava-v1.5/pope_data.json \
     --vision_tower /home/cuiruochen/model/clip-vit-large-patch14-336 \
     --freeze_backbone True \
     --tune_mm_mlp_adapter False \
@@ -17,7 +17,7 @@ deepspeed --include localhost:0,1,4,7 --master_port=25641 ha_dpo/models/llava-v1
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ha_dpo/models/llava-v1_5/checkpoints/iloveu \
+    --output_dir post_interaction_block/models/llava-v1_5/checkpoints/iloveu \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \

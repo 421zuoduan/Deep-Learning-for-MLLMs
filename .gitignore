@@ -24,6 +24,26 @@ ha_dpo/models/llava-v1_5/playground/data
 
 ha_dpo/models/llava-v1_5/checkpoints
 
+
+
+
+
+
+post_interaction_block/data/coco2014
+post_interaction_block/data/hadpo
+post_interaction_block/data/POPE
+post_interaction_block/data/shr
+post_interaction_block/data/VG
+post_interaction_block/results
+
+post_interaction_block/models/llava-v1_5/pope_adv.jsonl
+post_interaction_block/models/llava-v1_5/pope_popular.jsonl
+post_interaction_block/models/llava-v1_5/pope_random.jsonl
+
+post_interaction_block/models/llava-v1_5/playground/data
+
+post_interaction_block/models/llava-v1_5/checkpoints
+
 # # dir 不需要提交的目录
 # /node_modules
 # ​

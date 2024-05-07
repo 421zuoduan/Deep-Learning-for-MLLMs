@@ -24,10 +24,10 @@ from .multimodal_projector.builder import build_vision_projector
 from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 
-class LlavaPostDecoderMetaModel:
+class LlavaPIBMetaModel:
 
     def __init__(self, config):
-        super(LlavaPostDecoderMetaModel, self).__init__(config)
+        super(LlavaPIBMetaModel, self).__init__(config)
 
         if hasattr(config, "mm_vision_tower"):
             self.vision_tower = build_vision_tower(config, delay_load=True)
@@ -82,7 +82,7 @@ class LlavaPostDecoderMetaModel:
             self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
 
 
-class LlavaPostDecoderMetaForCausalLM(ABC):
+class LlavaPIBMetaForCausalLM(ABC):
 
     @abstractmethod
     def get_model(self):

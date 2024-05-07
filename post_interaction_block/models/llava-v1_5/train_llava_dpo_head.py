@@ -1,5 +1,5 @@
 import os
-os.environ["WANDB_PROJECT"]="ha-dpo"
+os.environ["WANDB_PROJECT"]="ha-dpo-head"
 
 import json
 import copy
@@ -19,7 +19,9 @@ import transformers
 from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
-from llava.model import *
+# from llava.model import *
+from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
+from llava.model.language_model.llava_mpt import LlavaMPTForCausalLM
 from llava.constants import IGNORE_INDEX
 from llava import conversation as conversation_lib
 from llava.train.train import preprocess_multimodal, preprocess
@@ -33,7 +35,17 @@ from peft import (
     set_peft_model_state_dict,
 )
 
-from ha_dpo.trainer.llava_dpo_trainer import LlavaDPOTrainer
+from post_interaction_block.trainer.llava_dpo_trainer_head import LlavaDPOTrainer
+
+# import debugpy
+# try:
+#     # 5678 is the default attach port in the VS Code debug configurations. Unless a host and port are specified, host defaults to 127.0.0.1
+#     debugpy.listen(("localhost", 9501))
+#     print("Waiting for debugger attach")
+#     debugpy.wait_for_client()
+# except Exception as e:
+#     pass
+
 
 local_rank = None
         
@@ -43,6 +55,7 @@ class ModelArguments:
     version: Optional[str] = field(default="v0")
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
+    tune_lm_head: bool = field(default=False)
     vision_tower: Optional[str] = field(default=None)
     mm_vision_select_layer: Optional[int] = field(default=-1)   # default to the last layer
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
@@ -466,7 +479,7 @@ class SaverCallback(TrainerCallback):
     "A callback that prints a message at the end of training"
     def on_train_end(self, args, state, control, **kwargs):
         # save model
-        if isinstance(kwargs['model'], PeftModelForCausalLM):
+        if isinstance(kwargs['model'], LlavaLlamaForCausalLM):
             torch.cuda.synchronize()
             state_dict = get_peft_state_maybe_zero_3(
                 kwargs['model'].named_parameters(), "none"
@@ -520,6 +533,7 @@ def setup_llava_model(model_args, data_args, script_args):
             model = LlavaMPTForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 config=config,
+                
                 cache_dir=script_args.cache_dir,
                 **bnb_model_from_pretrained_args
             )
@@ -539,6 +553,9 @@ def setup_llava_model(model_args, data_args, script_args):
 
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
+    else:
+        model.model.requires_grad_(True)
+
 
     if script_args.bits in [4, 8]:
         from peft import prepare_model_for_kbit_training
@@ -620,13 +637,20 @@ def setup_llava_model(model_args, data_args, script_args):
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
 
         model.config.tune_mm_mlp_adapter = script_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
+        # if model_args.tune_mm_mlp_adapter:
+        #     model.requires_grad_(False)
+        #     for p in model.get_model().mm_projector.parameters():
+        #         p.requires_grad = True
+
+        # model.config.freeze_mm_mlp_adapter = script_args.freeze_mm_mlp_adapter
+        # if script_args.freeze_mm_mlp_adapter:
+        #     for p in model.get_model().mm_projector.parameters():
+        #         p.requires_grad = False
+
         if model_args.tune_mm_mlp_adapter:
-            model.requires_grad_(False)
             for p in model.get_model().mm_projector.parameters():
                 p.requires_grad = True
-
-        model.config.freeze_mm_mlp_adapter = script_args.freeze_mm_mlp_adapter
-        if script_args.freeze_mm_mlp_adapter:
+        else:
             for p in model.get_model().mm_projector.parameters():
                 p.requires_grad = False
 
@@ -638,6 +662,15 @@ def setup_llava_model(model_args, data_args, script_args):
         script_args.use_im_start_end = model_args.mm_use_im_start_end
         model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
         model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
+
+    if model_args.tune_lm_head:
+        model.lm_head.requires_grad_(True)
+        for p in model.lm_head.parameters():
+            p.requires_grad = True
+    else:
+        model.lm_head.requires_grad_(False)
+        for p in model.lm_head.parameters():
+            p.requires_grad = False
 
     if script_args.bits in [4, 8]:
         from peft.tuners.lora import LoraLayer
@@ -668,16 +701,16 @@ def main():
         data_args=data_args,
         script_args=script_args,
     )
-    script_args.lora_enable = False
-    llava_ref_model, _ = setup_llava_model(
-        model_args=model_args, 
-        data_args=data_args,
-        script_args=script_args,
-    )
+    # script_args.lora_enable = False
+    # llava_ref_model, _ = setup_llava_model(
+    #     model_args=model_args, 
+    #     data_args=data_args,
+    #     script_args=script_args,
+    # )
     
-    # freeze reference model
-    for n,p in llava_ref_model.named_parameters():
-        p.requires_grad = False
+    # # freeze reference model
+    # for n,p in llava_ref_model.named_parameters():
+    #     p.requires_grad = False
     
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
@@ -723,7 +756,7 @@ def main():
     # initialize the DPO trainer
     dpo_trainer = LlavaDPOTrainer(
         model=llava_policy_model,
-        ref_model=llava_ref_model,
+        ref_model=None,
         args=training_args,
         beta=script_args.beta,
         tokenizer=tokenizer,
