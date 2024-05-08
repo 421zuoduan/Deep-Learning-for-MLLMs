@@ -5,6 +5,8 @@
 
 *.tar
 
+*.pth
+
 nohup.out
 
 wandb
@@ -15,6 +17,7 @@ ha_dpo/data/POPE
 ha_dpo/data/shr
 ha_dpo/data/VG
 ha_dpo/results
+ha_dpo/data/cc_sbu_align
 
 ha_dpo/models/llava-v1_5/pope_adv.jsonl
 ha_dpo/models/llava-v1_5/pope_popular.jsonl
@@ -28,7 +31,7 @@ ha_dpo/models/llava-v1_5/checkpoints
 
 
 
-
+post_interaction_block/data/cc_sbu_align
 post_interaction_block/data/coco2014
 post_interaction_block/data/hadpo
 post_interaction_block/data/POPE
