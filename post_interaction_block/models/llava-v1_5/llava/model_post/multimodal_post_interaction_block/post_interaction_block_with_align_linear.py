@@ -16,7 +16,7 @@ from transformers.activations import ACT2FN
 from .configuration_post_interaction_block import LlamaPIBConfig
 
 
-class AlignMLP(nn.Module):
+class AlignLinear(nn.Module):
     def __init__(self, mm_hidden_size, intermediate_size, hidden_size, hidden_act):
         super().__init__()
 
@@ -24,8 +24,9 @@ class AlignMLP(nn.Module):
         self.intermediate_size = intermediate_size
         self.hidden_size = hidden_size
         self.activation_fn = ACT2FN[hidden_act]
-        self.fc1 = nn.Linear(mm_hidden_size, intermediate_size)
-        self.fc2 = nn.Linear(intermediate_size, hidden_size)
+        self.fc1 = nn.Linear(mm_hidden_size, hidden_size)
+        # self.fc1 = nn.Linear(mm_hidden_size, intermediate_size)
+        # self.fc2 = nn.Linear(intermediate_size, hidden_size)
 
     def forward(self, hidden_states: torch.Tensor, pretraining_tp=1) -> torch.Tensor:
         
@@ -36,14 +37,14 @@ class AlignMLP(nn.Module):
         else:
             hidden_states = self.fc1(hidden_states)
             
-        hidden_states = self.activation_fn(hidden_states)
+        # hidden_states = self.activation_fn(hidden_states)
         
-        if pretraining_tp > 1:
-            fc2_slices = self.fc2.weight.split(self.vocabintermediate_size_size // self.mm_hidden_size, dim=0)
-            hidden_states = [F.linear(hidden_states, fc2_slices[i]) for i in range(pretraining_tp)]
-            hidden_states = torch.cat(hidden_states, dim=-1)
-        else:
-            hidden_states = self.fc2(hidden_states)
+        # if pretraining_tp > 1:
+        #     fc2_slices = self.fc2.weight.split(self.vocabintermediate_size_size // self.mm_hidden_size, dim=0)
+        #     hidden_states = [F.linear(hidden_states, fc2_slices[i]) for i in range(pretraining_tp)]
+        #     hidden_states = torch.cat(hidden_states, dim=-1)
+        # else:
+        #     hidden_states = self.fc2(hidden_states)
         
         return hidden_states
 
@@ -247,16 +248,15 @@ class PIBCrossAttention(nn.Module):
         return attn_output, attn_weights_reshaped
 
 
-class PIBLinear(nn.Module):
+class PIBMLP(nn.Module):
     def __init__(self, hidden_size, intermediate_size, hidden_act):
         super().__init__()
 
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
         self.activation_fn = ACT2FN[hidden_act]
-        self.fc1 = nn.Linear(hidden_size, hidden_size, bias=False)
-        # self.fc1 = nn.Linear(hidden_size, intermediate_size, bias=False)
-        # self.fc2 = nn.Linear(intermediate_size, hidden_size, bias=False)
+        self.fc1 = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.fc2 = nn.Linear(intermediate_size, hidden_size, bias=False)
 
     def forward(self, hidden_states: torch.Tensor, pretraining_tp=1) -> torch.Tensor:
         
@@ -267,14 +267,14 @@ class PIBLinear(nn.Module):
         else:
             hidden_states = self.fc1(hidden_states)
             
-        # hidden_states = self.activation_fn(hidden_states)
+        hidden_states = self.activation_fn(hidden_states)
         
-        # if pretraining_tp > 1:
-        #     fc2_slices = self.fc2.weight.split(self.vocabintermediate_size_size // self.mm_hidden_size, dim=0)
-        #     hidden_states = [F.linear(hidden_states, fc2_slices[i]) for i in range(pretraining_tp)]
-        #     hidden_states = torch.cat(hidden_states, dim=-1)
-        # else:
-        #     hidden_states = self.fc2(hidden_states)
+        if pretraining_tp > 1:
+            fc2_slices = self.fc2.weight.split(self.vocabintermediate_size_size // self.mm_hidden_size, dim=0)
+            hidden_states = [F.linear(hidden_states, fc2_slices[i]) for i in range(pretraining_tp)]
+            hidden_states = torch.cat(hidden_states, dim=-1)
+        else:
+            hidden_states = self.fc2(hidden_states)
         
         return hidden_states
 
@@ -332,7 +332,7 @@ class PostInteractionBlock(nn.Module):
         """
         self.config = config
         
-        # self.align = AlignMLP(config.mm_hidden_size, config.intermediate_size, config.hidden_size, config.align_hidden_act)
+        self.align = AlignLinear(config.mm_hidden_size, config.intermediate_size, config.hidden_size, config.align_hidden_act)
         
         self.image_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         
