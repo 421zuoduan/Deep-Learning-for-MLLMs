@@ -9,6 +9,7 @@ from vigc.common.registry import registry
 
 from vigc.datasets.builders import *
 from vigc.models import *
+from vigc.models_post import *
 from vigc.processors import *
 from vigc.tasks import *
 

@@ -6,7 +6,7 @@ model:
   load_pretrained: True
 
 #  pretrained: "https://storage.googleapis.com/sfr-vision-language-research/LAVIS/models/InstructBLIP/instruct_blip_vicuna7b_trimmed.pth"
-  pretrained: "path/to/pretrained/weight"
+  pretrained: "/home/cuiruochen/model/InstructBLIP/vicuna-7b-v1.1-post-20240509-v8-bs-2-1-16-epoch-1-gpu-4-lr-5e-7"
   finetuned: ""
 
   # vit encoder
@@ -20,7 +20,7 @@ model:
   num_query_token: 32
 
   # path to Vicuna checkpoint
-  llm_model: "path/to/vicuna/weight"
+  llm_model: "/home/cuiruochen/model/InstructBLIP/vicuna-7b-v1.1--------pib-to-be-copied"
 
   # generation configs
   prompt: ""

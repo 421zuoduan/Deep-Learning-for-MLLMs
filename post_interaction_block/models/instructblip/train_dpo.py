@@ -21,8 +21,11 @@ from transformers import HfArgumentParser, TrainingArguments
 import vigc.tasks as tasks
 from vigc.common.config import Config
 
-from ha_dpo.trainer.instructblip_dpo_trainer import InstructBLIPDPOTrainer
-from ha_dpo.models.instructblip.dpo_dataset import PopeDataset, AugmentedCaptionDataset
+import sys
+sys.path.append('.')
+
+from post_interaction_block.trainer.instructblip_dpo_trainer import InstructBLIPDPOTrainer
+from post_interaction_block.models.instructblip.dpo_dataset import PopeDataset, AugmentedCaptionDataset
 
 
 # Define and parse arguments.
@@ -129,10 +132,10 @@ def main():
     cfg.pretty_print()
     
     # set dpo model parameters
-    cfg.config.model.lora_config.lora_r = script_args.lora_r
-    cfg.config.model.lora_config.lora_alpha = script_args.lora_alpha
-    cfg.config.model.lora_config.lora_dropout = script_args.lora_dropout
-    cfg.config.model.lora_config.lora_target_modules = script_args.lora_target_modules
+    # cfg.config.model.lora_config.lora_r = script_args.lora_r
+    # cfg.config.model.lora_config.lora_alpha = script_args.lora_alpha
+    # cfg.config.model.lora_config.lora_dropout = script_args.lora_dropout
+    # cfg.config.model.lora_config.lora_target_modules = script_args.lora_target_modules
     cfg.config.model.freeze_llm_proj = script_args.freeze_llm_proj
 
     task = tasks.setup_task(cfg)

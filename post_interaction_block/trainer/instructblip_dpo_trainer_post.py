@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from transformers import PreTrainedModel
 
-from .base_dpo_trainer import BaseDPOTrainer
+from .base_dpo_trainer_post import BaseDPOTrainer
 
 class InstructBLIPDPOTrainer(BaseDPOTrainer):
     

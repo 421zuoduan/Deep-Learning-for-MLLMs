@@ -21,7 +21,11 @@ from transformers import HfArgumentParser, TrainingArguments
 import vigc.tasks as tasks
 from vigc.common.config import Config
 
+import sys
+sys.path.append('.')
+
 from post_interaction_block.trainer.instructblip_dpo_trainer_post import InstructBLIPDPOTrainer
+# from post_interaction_block.models.instructblip.vigc.models_post.blip2_models.blip2_vicuna_instruct_dpo_post import DPOBlip2VicunaInstructPIB
 from post_interaction_block.models.instructblip.dpo_dataset import PopeDataset, AugmentedCaptionDataset
 
 
@@ -114,7 +118,7 @@ class MyCallback(TrainerCallback):
             with open(os.path.join(args.output_dir, "training_args.yaml"), "w") as f:
                 yaml.dump(args, f)
             # save lora weights
-            if isinstance(kwargs['model'].llm_model, PeftModelForCausalLM):
+            if isinstance(kwargs['model'].llm_model, DPOBlip2VicunaInstructPIB):
                 kwargs['model'].llm_model.save_pretrained(args.output_dir)
     
     
@@ -129,10 +133,10 @@ def main():
     cfg.pretty_print()
     
     # set dpo model parameters
-    cfg.config.model.lora_config.lora_r = script_args.lora_r
-    cfg.config.model.lora_config.lora_alpha = script_args.lora_alpha
-    cfg.config.model.lora_config.lora_dropout = script_args.lora_dropout
-    cfg.config.model.lora_config.lora_target_modules = script_args.lora_target_modules
+    # cfg.config.model.lora_config.lora_r = script_args.lora_r
+    # cfg.config.model.lora_config.lora_alpha = script_args.lora_alpha
+    # cfg.config.model.lora_config.lora_dropout = script_args.lora_dropout
+    # cfg.config.model.lora_config.lora_target_modules = script_args.lora_target_modules
     cfg.config.model.freeze_llm_proj = script_args.freeze_llm_proj
 
     task = tasks.setup_task(cfg)
@@ -141,7 +145,7 @@ def main():
     
     # build reference model
     ref_cfg = copy.deepcopy(cfg)
-    ref_cfg.config.model.lora_config.lora_r = 0
+    # ref_cfg.config.model.lora_config.lora_r = 0
     ref_task = tasks.setup_task(ref_cfg)
     ref_model = task.build_model(ref_cfg)
     for n,p in ref_model.named_parameters():
@@ -196,6 +200,11 @@ def main():
         max_grad_norm=script_args.max_grad_norm,
         seed=script_args.seed,
     )
+    
+    print("--------------------------------------------------------------------------------")
+    print(f"training_args.gradient_checkpointing: {training_args.gradient_accumulation_steps}")
+    print(f"training_args.deepspeed_plugin: {training_args.deepspeed_plugin}")
+    print(f"model.config: {model.config}")
     
     # initialize the DPO trainer
     dpo_trainer = InstructBLIPDPOTrainer(

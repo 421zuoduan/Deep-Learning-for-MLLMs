@@ -1,13 +1,8 @@
 model:
-  arch: dpo_blip2_vicuna_instruct
+  arch: dpo_blip2_vicuna_instruct_post
   model_type: vicuna7b
-  pretrained: "/home/cuiruochen/model/InstructBLIP-trimmed-model/instruct_blip_vicuna7b_trimmed.pth"
-  llm_model: "/home/cuiruochen/model/vicuna-7b-v1.1-post-20240508-v8"
-  lora_config: 
-    lora_r: 0
-    lora_alpha: 16
-    lora_dropout: 0.1
-    target_modules: [ "q_proj", "k_proj", "v_proj",]
+  pretrained: "/home/cuiruochen/model/InstructBLIP/InstructBLIP-trimmed-model/instruct_blip_vicuna7b_trimmed.pth"
+  llm_model: "/home/cuiruochen/model/InstructBLIP/vicuna-7b-v1.1-post-20240510-v8-bs-2-1-16-epoch-1-gpu-4-lr-5e-7"
 
 datasets:
   instruct_blip_given_q_coco2017_vig_test: # name of the dataset builder
