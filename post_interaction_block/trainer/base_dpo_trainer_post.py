@@ -247,8 +247,6 @@ class BaseDPOTrainer(Trainer):
     def _prepare_deepspeed(self, model: PreTrainedModelWrapper):
         # Adapted from accelerate: https://github.com/huggingface/accelerate/blob/739b135f8367becb67ffaada12fe76e3aa60fefd/src/accelerate/accelerator.py#L1473
         deepspeed_plugin = self.accelerator.state.deepspeed_plugin
-        print("-------------------------------------------------------------------------------------")
-        print(f"deepspeed_plugin: {deepspeed_plugin}")
         config_kwargs = deepspeed_plugin.deepspeed_config
         if model is not None:
             if hasattr(model, "config"):
@@ -273,10 +271,6 @@ class BaseDPOTrainer(Trainer):
         # config_kwargs['gradient_accumulation_steps'] = self.args.gradient_accumulation_steps
         if config_kwargs["zero_optimization"]["stage"] != 3:
             config_kwargs["zero_optimization"]["stage"] = 0
-        print("-------------------------------------------------------------------------------")
-        print(f"config_kwargs['gradient_accumulation_steps']: {config_kwargs['gradient_accumulation_steps']}")
-        print(f"self.args.gradient_accumulation_steps: {self.args.gradient_accumulation_steps}")
-        print(f"config_kwargs: {config_kwargs}")
         model, *_ = deepspeed.initialize(model=model, config=config_kwargs)
         model.eval()
         return model

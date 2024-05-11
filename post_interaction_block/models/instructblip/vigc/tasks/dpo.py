@@ -3,7 +3,6 @@ import os
 
 import torch
 import torch.distributed as dist
-from peft import LoraConfig, get_peft_model
 
 from vigc.common.dist_utils import get_rank, get_world_size, is_main_process, is_dist_avail_and_initialized
 from vigc.common.logger import MetricLogger, SmoothedValue

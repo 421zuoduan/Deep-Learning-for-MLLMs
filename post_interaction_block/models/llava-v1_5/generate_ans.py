@@ -131,6 +131,14 @@ def main(args):
                 max_new_tokens=512,
                 use_cache=True,
                 stopping_criteria=[stopping_criteria])
+            
+            
+            
+        # TODO
+            
+            
+            
+            
 
         for i in range(len(output_ids)):
             outputs = tokenizer.decode(output_ids[i, input_ids.shape[1]:], skip_special_tokens=True).strip()

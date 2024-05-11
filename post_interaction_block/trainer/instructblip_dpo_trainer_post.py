@@ -46,7 +46,9 @@ class InstructBLIPDPOTrainer(BaseDPOTrainer):
         question = inputs["prompt"]
         chosen_ans = inputs["chosen"]
         reject_ans = inputs["rejected"]
-
+        
+        # training stage: image.shape bs, 3, 224, 224
+        # training stage: len(uestion) bs, 这里还是自然语言
         inputs_llm, atts_llm = self.model.extract_visual_embeddings(image, question)
 
         self.model.llm_tokenizer.padding_side = "right"

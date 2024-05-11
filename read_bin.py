@@ -7,7 +7,7 @@ import torch
 
 # llm_state_dict = torch.load("/home/cuiruochen/model/llava-v1.5-7b-train_postv4-20240407-bs-1-1-16-epoch-1-gpu-4-stages-2/pytorch_model-00002-of-00002.bin")
 
-llm_state_dict = torch.load("/home/cuiruochen/model/llava-v1.5-7b-train_postv5-20240410-bs-1-1-16-epoch-1-gpu-4-stages-2/pytorch_model-00002-of-00002.bin")
+llm_state_dict = torch.load("/home/cuiruochen/model/InstructBLIP/bert-base-uncased/pytorch_model.bin")
 
 print(llm_state_dict.keys())
 

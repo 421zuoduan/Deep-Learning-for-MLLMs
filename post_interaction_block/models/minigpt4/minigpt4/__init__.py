@@ -14,6 +14,7 @@ from minigpt4.common.registry import registry
 
 from minigpt4.datasets.builders import *
 from minigpt4.models import *
+from minigpt4.models_post import *
 from minigpt4.processors import *
 from minigpt4.tasks import *
 

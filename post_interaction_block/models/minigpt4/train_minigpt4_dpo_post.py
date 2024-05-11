@@ -1,5 +1,5 @@
 import os
-os.environ["WANDB_PROJECT"]="instructblip-post-hadpo"
+os.environ["WANDB_PROJECT"]="minigpt4-post-hadpo"
 
 import yaml
 import json
@@ -18,17 +18,11 @@ from peft.peft_model import PeftModelForCausalLM
 from transformers import TrainerCallback
 from transformers import HfArgumentParser, TrainingArguments
 
-import vigc.tasks as tasks
-from vigc.common.config import Config
-from vigc.models_post.blip2_models.blip2_vicuna_instruct_dpo_post import DPOBlip2VicunaInstructPIB
+import minigpt4.tasks as tasks
+from minigpt4.common.config import Config
 
-import sys
-sys.path.append('.')
-
-from post_interaction_block.trainer.instructblip_dpo_trainer_post import InstructBLIPDPOTrainer
-# from post_interaction_block.models.instructblip.vigc.models_post.blip2_models.blip2_vicuna_instruct_dpo_post import DPOBlip2VicunaInstructPIB
-from post_interaction_block.models.instructblip.dpo_dataset import PopeDataset, AugmentedCaptionDataset
-
+from post_interaction_block.trainer.minigpt4_dpo_trainer import MiniGPT4DPOTrainer
+from dpo_dataset import PopeDataset, AugmentedCaptionDataset, CCSBUAlignDataset
 
 # Define and parse arguments.
 @dataclass
@@ -41,13 +35,16 @@ class ScriptArguments:
     cfg_path: str = field(metadata={"help": "path to configuration file."})
     
     # data parameters
+    ccsbualign_data_path: Optional[str] = field(default=None, metadata={"help": "path of the CCSBUAlign data."})
     desc_train_data_path: Optional[str] = field(default=None, metadata={"help": "path of the description positive-negative data."})
     pope_train_data_path: Optional[str] = field(default=None, metadata={"help": "path of the pope-format positive-negative data."})
     vg_path: Optional[str] = field(default="", metadata={"help": "path of visual genome annotation file."})
     
     # hyper-parameters
     seed: Optional[int] = field(default=42, metadata={"help": "training and data seed."})
+    gamma: Optional[float] = field(default=1.0, metadata={"help": "weight factor of auxilary language modeling task."})
     beta: Optional[float] = field(default=0.1, metadata={"help": "the beta parameter for DPO loss"})
+    auxilary: Optional[bool] = field(default=False, metadata={"help": "whether to use auxilary task during DPO."})
     
     # training parameters
     model_name_or_path: Optional[str] = field(
@@ -81,7 +78,7 @@ class ScriptArguments:
     eval_steps: Optional[float] = field(default=None, metadata={"help": "the evaluation frequency"})
     output_dir: Optional[str] = field(default="./results", metadata={"help": "the output directory"})
     log_freq: Optional[int] = field(default=1, metadata={"help": "the logging frequency"})
-    run_name: Optional[str] = field(default="dpo_instructblip", metadata={"help": "name of the run"})
+    run_name: Optional[str] = field(default="minigpt4", metadata={"help": "name of the run"})
     report_to: Optional[str] = field(
         default="wandb",
         metadata={
@@ -91,7 +88,7 @@ class ScriptArguments:
         },
     )
     
-    freeze_llm_proj: Optional[bool] = field(default=True, metadata={"help": "whether to freeze llama_proj module"})
+    freeze_llama_proj: Optional[bool] = field(default=True, metadata={"help": "whether to freeze llama_proj module"})
     
     # debug argument for distributed training
     ignore_bias_buffers: Optional[bool] = field(
@@ -108,14 +105,23 @@ class ScriptArguments:
 class MyCallback(TrainerCallback):
     "A callback that prints a message at the end of training"
     def on_train_end(self, args, state, control, **kwargs):
-        # save model
+        # save training arguments
         if "LOCAL_RANK" not in os.environ or int(os.environ["LOCAL_RANK"]) == 0:
             print("Save model in the end of training")
             with open(os.path.join(args.output_dir, "training_args.yaml"), "w") as f:
                 yaml.dump(args, f)
+        # save model
+        if "LOCAL_RANK" not in os.environ or int(os.environ["LOCAL_RANK"]) == 0:
             # save weights
-            if isinstance(kwargs['model'].llm_model, DPOBlip2VicunaInstructPIB):
-                kwargs['model'].llm_model.save_pretrained(args.output_dir)
+            if isinstance(kwargs['model'].llama_model, PeftModelForCausalLM):
+                kwargs['model'].llama_model.save_pretrained(args.output_dir)
+            # if llama_proj is not frozen, save llama_proj
+            if not kwargs['model'].freeze_llama_proj:
+                state_dict = kwargs['model'].state_dict()
+                for k in list(state_dict.keys()):
+                    if "llama_proj" not in k:
+                        del state_dict[k]
+                torch.save({"model":state_dict}, os.path.join(args.output_dir, "llama_proj.bin"))
     
     
 def main():
@@ -126,41 +132,44 @@ def main():
     
     cfg_dict = {'cfg_path': script_args.cfg_path, 'options': None}
     cfg = Config(Namespace(**cfg_dict))
-    cfg.pretty_print()
     
     # set dpo model parameters
-    cfg.config.model.freeze_llm_proj = script_args.freeze_llm_proj
-
+    cfg.config.model.freeze_llama_proj = script_args.freeze_llama_proj
+    
+    ref_cfg = copy.deepcopy(cfg)
+    ref_cfg.config.model.freeze_llama_proj = True # no lora in reference model
+    
+    # model & dataset
+    # policy
     task = tasks.setup_task(cfg)
     model = task.build_model(cfg)
-    tokenizer = model.llm_tokenizer
+    # reference
+    task_ref = tasks.setup_task(ref_cfg)
+    ref_model = task_ref.build_model(ref_cfg)
     
-    # build reference model
-    ref_cfg = copy.deepcopy(cfg)
-    ref_task = tasks.setup_task(ref_cfg)
-    ref_model = task.build_model(ref_cfg)
-    for n,p in ref_model.named_parameters():
-        p.requires_grad = False
+    tokenizer = model.llama_tokenizer
     
-    if script_args.desc_train_data_path is not None:
-        desc_train_dataset = AugmentedCaptionDataset(
-            data_path = script_args.desc_train_data_path,
-            vg_path = script_args.vg_path,
-            cfg = cfg.config,
-            seed = script_args.seed,
-        )
-    if script_args.pope_train_data_path is not None:
-        pope_train_dataset = PopeDataset(
-            data_path = script_args.pope_train_data_path,
-            vg_path = script_args.vg_path,
+    if script_args.auxilary:
+        auxilary_dataset = CCSBUAlignDataset(
+            ccsbualign_data_path = script_args.ccsbualign_data_path,
             cfg = cfg.config,
         )
-    if script_args.pope_train_data_path and script_args.desc_train_data_path:
-        train_dataset = ConcatDataset([desc_train_dataset]+[pope_train_dataset]*2)  # keep data ratio as pope:desc=2:1
-    elif script_args.pope_train_data_path:
-        train_dataset = pope_train_dataset
-    elif script_args.desc_train_dataset:
-        train_dataset = desc_train_dataset
+    else:
+        auxilary_dataset = None
+    desc_train_dataset = AugmentedCaptionDataset(
+        data_path = script_args.desc_train_data_path,
+        vg_path = script_args.vg_path,
+        cfg = cfg.config,
+        seed = script_args.seed,
+        auxilary_dataset = auxilary_dataset,
+    )
+    pope_train_dataset = PopeDataset(
+        data_path = script_args.pope_train_data_path,
+        vg_path = script_args.vg_path,
+        cfg = cfg.config,
+        auxilary_dataset = auxilary_dataset,
+    )
+    train_dataset = ConcatDataset([desc_train_dataset, pope_train_dataset])
     
     # if not use gradient_checkpointing, do not set ddp_find_unused_parameters
     if not script_args.gradient_checkpointing:
@@ -192,15 +201,13 @@ def main():
         seed=script_args.seed,
     )
     
-    print("---------------------------------------------------------------------")
-    print(f"Training arguments: {training_args}")
-    
     # initialize the DPO trainer
-    dpo_trainer = InstructBLIPDPOTrainer(
+    dpo_trainer = MiniGPT4DPOTrainer(
         model=model,
         ref_model=ref_model,
         args=training_args,
         beta=script_args.beta,
+        gamma=script_args.gamma,
         train_dataset=train_dataset,
         tokenizer=tokenizer,
         max_prompt_length=script_args.max_prompt_length,

@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 
 import transformers
-from peft import LoraConfig, get_peft_model
 
 from vigc.common.registry import registry
 from vigc.models.blip2_models.blip2 import Blip2Base, disabled_train
@@ -31,6 +30,7 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
 
     PRETRAINED_MODEL_CONFIG_DICT = {
         "vicuna7b": "configs/models/blip2_instruct_vicuna7b.yaml",
+        "vicuna7b_post": "configs/models/blip2_instruct_vicuna7b_post.yaml",
         "vicuna13b": "configs/models/blip2_instruct_vicuna13b.yaml",
         "minigpt4_vicuna7b": "configs/models/mini_gpt4_vicuna7b.yaml",
         "minigpt4_vicuna13b": "configs/models/mini_gpt4_vicuna13b.yaml",
@@ -53,7 +53,6 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
             apply_lemmatizer=False,
             qformer_text_input=True,
             truncate_q_former_output=True,
-            lora_config=None,
     ):
         super().__init__()
         transformers_version = version.parse(transformers.__version__)
@@ -154,21 +153,6 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
         self.qformer_text_input = qformer_text_input
         self.truncate_q_former_output = truncate_q_former_output
         
-        # We dont use lora anymore
-        #  # use lora to finetune llm in DPO training
-        # if lora_config is not None and lora_config.lora_r > 0:
-        #     lora_config = LoraConfig(
-        #         r=lora_config.lora_r,
-        #         lora_alpha=lora_config.lora_alpha,
-        #         target_modules=list(lora_config.target_modules),
-        #         lora_dropout=lora_config.lora_dropout,
-        #         bias="none",  # won't use bias currently
-        #         task_type="CAUSAL_LM",
-        #     )
-        #     self.llm_model = get_peft_model(self.llm_model, lora_config)
-        #     self.llm_model.print_trainable_parameters()
-        #     print("Loading lora done.")
-        
     # def _set_gradient_checkpointing(self, module, value=False):
     #     from .modeling_llama_post import LlamaModel
     #     if isinstance(module, LlamaModel):
@@ -210,6 +194,7 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
         return llm_tokens, input_part_targets_len
 
     def extract_visual_embeddings(self, image, text):
+        print(f"self.config: {self.config}")
         with self.maybe_autocast():
             image_embeds = self.ln_vision(self.visual_encoder(image))
         image_atts = torch.ones(image_embeds.size()[:-1], dtype=torch.long).to(image.device)
@@ -670,8 +655,6 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
         qformer_text_input = cfg.get("qformer_text_input", True)
         truncate_q_former_output = cfg.get("truncate_q_former_output", True)
         
-        lora_config = cfg.get("lora_config", None)
-        
         model = cls(
             vit_model=vit_model,
             img_size=img_size,
@@ -688,7 +671,6 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
             apply_lemmatizer=apply_lemmatizer,
             qformer_text_input=qformer_text_input,
             truncate_q_former_output=truncate_q_former_output,
-            lora_config=lora_config,
         )
 
         model.load_checkpoint_from_config(cfg)
