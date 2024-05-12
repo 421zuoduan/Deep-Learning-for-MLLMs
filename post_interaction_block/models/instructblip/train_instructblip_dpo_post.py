@@ -21,6 +21,7 @@ from transformers import HfArgumentParser, TrainingArguments
 import vigc.tasks as tasks
 from vigc.common.config import Config
 from vigc.models_post.blip2_models.blip2_vicuna_instruct_dpo_post import DPOBlip2VicunaInstructPIB
+from vigc.models_post.blip2_models.modeling_llama_post import LlamaModel
 
 import sys
 sys.path.append('.')
@@ -114,7 +115,7 @@ class MyCallback(TrainerCallback):
             with open(os.path.join(args.output_dir, "training_args.yaml"), "w") as f:
                 yaml.dump(args, f)
             # save weights
-            if isinstance(kwargs['model'].llm_model, DPOBlip2VicunaInstructPIB):
+            if isinstance(kwargs['model'].llm_model, LlamaModel):
                 kwargs['model'].llm_model.save_pretrained(args.output_dir)
     
     
@@ -194,6 +195,9 @@ def main():
     
     print("---------------------------------------------------------------------")
     print(f"Training arguments: {training_args}")
+    
+    print("------------------------------------------------------------------------------------------------")
+    print(f"model: {model}")
     
     # initialize the DPO trainer
     dpo_trainer = InstructBLIPDPOTrainer(

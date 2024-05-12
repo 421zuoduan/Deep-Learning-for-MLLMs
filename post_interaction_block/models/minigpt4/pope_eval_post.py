@@ -194,11 +194,7 @@ if __name__ == "__main__":
             results_all_rank.extend(_data)
         # sort according to question_id
         results_all_rank = sorted(results_all_rank, key=lambda x:x["question_id"])
-        res_file = f"pope_{args.set}.jsonl"
-        with open(os.path.join("./post_interaction_block/models/minigpt4", res_file), "w") as f:
+        
+        with open(f"ha_dpo/models/minigpt4/pope_{args.set}.jsonl", "w") as f:
             for res in results_all_rank:
                 f.write(json.dumps(res)+'\n')
-        
-        # with open(f"./post_interaction/models/minigpt4/pope_{args.set}.jsonl", "w") as f:
-        #     for res in results_all_rank:
-        #         f.write(json.dumps(res)+'\n')

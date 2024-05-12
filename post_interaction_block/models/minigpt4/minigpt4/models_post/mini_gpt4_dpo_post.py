@@ -13,7 +13,8 @@ from minigpt4.conversation.conversation import StoppingCriteriaSub
 
 from transformers import LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
-from transformers.models.llama.modeling_llama import LlamaForCausalLM
+# from transformers.models.llama.modeling_llama import LlamaForCausalLM
+from minigpt4.models_post.modeling_llama_post import LlamaForCausalLM
 
 
 @registry.register_model("mini_gpt4_dpo_post")
@@ -296,6 +297,10 @@ class MiniGPT4DPO(Blip2Base):
         
         image = torch.cat([image.unsqueeze(0) for image in inputs['image']], dim=0)
         img_embeds, atts_img = self.encode_img(image)
+        _img_embeds = img_embeds
+        print("---------------------------------------------------------------------------------------------")
+        print(f"img_embeds_qian: {img_embeds.shape}")
+        print(f"atts_img_qian: {atts_img.shape}")
 
         instruction = []
         for idx in range(len(inputs["data_type"])):
@@ -307,6 +312,8 @@ class MiniGPT4DPO(Blip2Base):
                 instruction.append(random.choice(self.prompt_list))
         
         img_embeds, atts_img = self.prompt_wrap(img_embeds, atts_img, instruction)
+        print(f"img_embeds_hou: {img_embeds.shape}")
+        print(f"atts_img_hou: {atts_img.shape}")
         
         self.llama_tokenizer.padding_side = "right"
         text = [t + self.end_sym for t in inputs["chosen"]]
@@ -346,6 +353,7 @@ class MiniGPT4DPO(Blip2Base):
 
         with self.maybe_autocast():
             outputs = self.llama_model(
+                image_features=_img_embeds,
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,
                 return_dict=True,

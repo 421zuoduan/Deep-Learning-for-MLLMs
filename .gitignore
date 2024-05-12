@@ -47,6 +47,13 @@ post_interaction_block/models/llava-v1_5/playground/data
 
 post_interaction_block/models/llava-v1_5/checkpoints
 
+post_interaction_block/models/instructblip/vigc/output
+
+
+post_interaction_block/models/minigpt4/pope_popular.jsonl
+post_interaction_block/models/minigpt4/pope_random.jsonl
+post_interaction_block/models/minigpt4/pope_adv.jsonl
+
 # # dir 不需要提交的目录
 # /node_modules
 # ​

@@ -14,6 +14,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutpu
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from transformers.models.llama.configuration_llama import LlamaConfig
+from minigpt4.models_post.configuration_post_interaction_block import LlamaPIBConfig
 
 import pdb
 
@@ -144,7 +145,7 @@ class LlamaMLP(nn.Module):
 class LlamaAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: LlamaPIBConfig):
         super().__init__()
         self.config = config
         self.hidden_size = config.hidden_size
@@ -233,7 +234,7 @@ class LlamaAttention(nn.Module):
 
 
 class LlamaDecoderLayer(nn.Module):
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: LlamaPIBConfig):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = LlamaAttention(config=config)
@@ -322,7 +323,7 @@ LLAMA_START_DOCSTRING = r"""
     LLAMA_START_DOCSTRING,
 )
 class LlamaPreTrainedModel(PreTrainedModel):
-    config_class = LlamaConfig
+    config_class = LlamaPIBConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
     _no_split_modules = ["LlamaDecoderLayer"]
@@ -629,6 +630,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
+        image_features: torch.FloatTensor = None,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
@@ -756,3 +758,57 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
         return reordered_past
 
+
+
+# class LlamaPIBForCausalLM(LlamaPreTrainedModel):
+#     config_class = LlamaPIBConfig
+    
+#     def __init__(self, config):
+#         super().__init__(config)
+#         self.model = LlamaModel(config)
+#         self.pretraining_tp = config.pretraining_tp
+#         self.vocab_size = config.vocab_size
+#         self.post_interaction_block = PostInteractionBlock(config)
+#         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+    
+#         # Initialize weights and apply final processing
+#         self.post_init()
+        
+#     def get_post_interaction_block(self):
+#         return self.post_interaction_block
+    
+#     def get_model(self):
+#         return self.model
+
+
+#     def forward(
+#         self,
+#         image_features: torch.FloatTensor = None,
+#         input_ids: torch.LongTensor = None,
+#         attention_mask: Optional[torch.Tensor] = None,
+#         position_ids: Optional[torch.LongTensor] = None,
+#         past_key_values: Optional[List[torch.FloatTensor]] = None,
+#         inputs_embeds: Optional[torch.FloatTensor] = None,
+#         query_embeds: Optional[torch.FloatTensor] = None,
+#         labels: Optional[torch.LongTensor] = None,
+#         use_cache: Optional[bool] = None,
+#         output_attentions: Optional[bool] = None,
+#         output_hidden_states: Optional[bool] = None,
+#         return_dict: Optional[bool] = None,
+#     ) -> Union[Tuple, CausalLMOutputWithPast]:
+        
+#         _image_features = image_features if image_features is not None else inputs_embeds
+        
+#         return super().forward(
+#             _image_features,
+#             input_ids=input_ids,
+#             attention_mask=attention_mask,
+#             position_ids=position_ids,
+#             past_key_values=past_key_values,
+#             inputs_embeds=inputs_embeds,
+#             labels=labels,
+#             use_cache=use_cache,
+#             output_attentions=output_attentions,
+#             output_hidden_states=output_hidden_states,
+#             return_dict=return_dict
+#         )

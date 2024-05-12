@@ -300,10 +300,10 @@ class PIBCATransformerBlock(nn.Module):
     def __init__(self, hidden_size, num_attention_heads, intermediate_size, hidden_act, attention_dropout=0.0, layer_norm_eps=1e-5):
         super().__init__()
         self.embed_dim = hidden_size
-        self.cross_attn = PIBCrossAttention(hidden_size, num_attention_heads, attention_dropout=attention_dropout)
+        # self.cross_attn = PIBCrossAttention(hidden_size, num_attention_heads, attention_dropout=attention_dropout)
         self.layer_norm1 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
         self.mlp = PIBMLP(hidden_size, intermediate_size, hidden_act)
-        self.layer_norm2 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
+        # self.layer_norm2 = nn.LayerNorm(self.embed_dim, eps=layer_norm_eps)
 
     def forward(
         self,
@@ -323,17 +323,17 @@ class PIBCATransformerBlock(nn.Module):
 
         hidden_states = self.layer_norm1(hidden_states)
         
-        hidden_states, attn_weights = self.cross_attn(
-            image_features=image_features,
-            hidden_states=hidden_states,
-            attention_mask=None,
-            causal_attention_mask=None,
-            output_attentions=output_attentions,
-        )
-        hidden_states = residual + hidden_states
+        # hidden_states, attn_weights = self.cross_attn(
+        #     image_features=image_features,
+        #     hidden_states=hidden_states,
+        #     attention_mask=None,
+        #     causal_attention_mask=None,
+        #     output_attentions=output_attentions,
+        # )
+        # hidden_states = residual + hidden_states
 
-        residual = hidden_states
-        hidden_states = self.layer_norm2(hidden_states)
+        # residual = hidden_states
+        # hidden_states = self.layer_norm2(hidden_states)
         hidden_states = self.mlp(hidden_states, pretraining_tp=1)
         hidden_states = residual + hidden_states
 
@@ -367,8 +367,8 @@ class PostInteractionBlock(nn.Module):
         Returns:
             outputs (Tensor): torch.Size([8, 752, 4096])
         """
-        image_features = self.align(image_features, pretraining_tp=self.config.pretraining_tp)
-        image_features = self.image_norm(image_features)
+        # image_features = self.align(image_features, pretraining_tp=self.config.pretraining_tp)
+        # image_features = self.image_norm(image_features)
         
         attention_mask = None
         

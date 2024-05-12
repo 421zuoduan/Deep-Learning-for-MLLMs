@@ -4,9 +4,9 @@ model:
 
   max_txt_len: 320
   end_sym: "</s>"
-  prompt_path: "ha_dpo/models/minigpt4/prompts/alignment.txt"
+  prompt_path: "post_interaction_block/models/minigpt4/prompts/alignment.txt"
   prompt_template: '[INST] {} [/INST] '
-  ckpt: 'ha_dpo/models/minigpt4/pretrained_minigpt4_llama2_7b.pth'
+  ckpt: '/home/cuiruochen/model/minigpt4/pretrained_minigpt4_llama2_7b/pretrained_minigpt4_llama2_7b.pth'
 
 datasets:
   cc_sbu_align:

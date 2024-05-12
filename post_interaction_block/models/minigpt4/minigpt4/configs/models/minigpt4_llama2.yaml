@@ -12,7 +12,7 @@ model:
   # generation configs
   prompt: ""
 
-  llama_model: "meta-llama/Llama-2-7b-chat-hf"
+  llama_model: "/home/cuiruochen/model/minigpt4/llama-2-7b-chat-hf-post-20240512-v8-bs-2-1-16-epoch-1-gpu-4-lr-1e-6"
 
 preprocess:
     vis_processor:
