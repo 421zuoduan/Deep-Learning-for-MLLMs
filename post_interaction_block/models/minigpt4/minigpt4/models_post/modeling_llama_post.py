@@ -15,6 +15,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from transformers.models.llama.configuration_llama import LlamaConfig
 from minigpt4.models_post.configuration_post_interaction_block import LlamaPIBConfig
+from minigpt4.models_post.post_interaction_block import PostInteractionBlock
 
 import pdb
 
@@ -602,6 +603,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.model = LlamaModel(config)
+        
+        self.post_interaction_block = PostInteractionBlock(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -690,9 +693,22 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         )
 
         hidden_states = outputs[0]
+        
+        # print("-----------------------------------------------------------------------------------------------")
+        # print(f"image_features: {image_features.shape}")
+        # print(f"image_features: {image_features}")
+        # import sys
+        # sys.exit()
+        # print(f"hidden_state1: {hidden_states}")
+
+        hidden_states = self.post_interaction_block(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)  
+        # hidden_states = self.post_interaction_block(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
+        
+        # print(f"hidden_state2: {hidden_states}")
+        
         logits = self.lm_head(hidden_states)
 
-        pdb.set_trace()
+        # pdb.set_trace()
         
         loss = None
         if labels is not None:

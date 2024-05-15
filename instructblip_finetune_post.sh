@@ -1,9 +1,9 @@
-localhost='0,1,2,3'
-# localhost='4,5,6,7'
+# localhost='0,1,2,3'
+localhost='4,5,6,7'
 
 version1='v8'
 time1='20240510'
-per_device_train_batch_size1='2'
+per_device_train_batch_size1='1'
 eval_bs1='1'
 gradient_accumulation_steps1='16'
 epoch1='1'

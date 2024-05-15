@@ -7,7 +7,7 @@ eval_bs1='1'
 gradient_accumulation_steps1='16'
 epoch1='1'
 gpu1='4'
-lr1='1e-6'
+lr1='5e-7'
 
 pope_file1="post_interaction_block/models/llava-v1_5/pope_adv.jsonl"
 pope_file2="post_interaction_block/models/llava-v1_5/pope_random.jsonl"

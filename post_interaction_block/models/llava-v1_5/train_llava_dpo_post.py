@@ -529,6 +529,12 @@ def setup_llava_model(model_args, data_args, script_args):
                 bnb_4bit_quant_type=script_args.quant_type # {'fp4', 'nf4'}
             )
         ))
+        
+    print(f"script_args.bits: {script_args.bits}")
+    print(f"script_args.cache_dir: {script_args.cache_dir}")
+    print(f"bnb_model_from_pretrained_args: {bnb_model_from_pretrained_args}")
+    # import sys
+    # sys.exit(0)
 
     if model_args.vision_tower is not None:
         if 'mpt' in model_args.model_name_or_path:

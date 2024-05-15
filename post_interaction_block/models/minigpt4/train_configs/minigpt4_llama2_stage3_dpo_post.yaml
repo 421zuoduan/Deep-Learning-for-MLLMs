@@ -1,6 +1,6 @@
 model:
   arch: mini_gpt4_dpo_post
-  model_type: pretrain_llama2
+  model_type: pretrain_llama2_post
 
   max_txt_len: 320
   end_sym: "</s>"

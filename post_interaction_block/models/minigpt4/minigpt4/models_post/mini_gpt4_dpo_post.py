@@ -18,7 +18,7 @@ from minigpt4.models_post.modeling_llama_post import LlamaForCausalLM
 
 
 @registry.register_model("mini_gpt4_dpo_post")
-class MiniGPT4DPO(Blip2Base):
+class MiniGPT4DPOPIB(Blip2Base):
     """
     BLIP2 GPT-LLAMA model.
     """
@@ -26,6 +26,7 @@ class MiniGPT4DPO(Blip2Base):
     PRETRAINED_MODEL_CONFIG_DICT = {
         "pretrain_vicuna0": "configs/models/minigpt4_vicuna0.yaml",
         "pretrain_llama2": "configs/models/minigpt4_llama2.yaml",
+        "pretrain_llama2_post": "configs/models/minigpt4_llama2.yaml",
     }
 
     def __init__(
@@ -48,6 +49,7 @@ class MiniGPT4DPO(Blip2Base):
         low_resource=False,  # use 8 bit and put vit in cpu
         device_8bit=0,  # the device of 8bit model should be set when loading and cannot be changed anymore.
         freeze_llama_proj=False,
+        tune_post_interaction_block=True,
     ):
         super().__init__()
         
@@ -116,6 +118,8 @@ class MiniGPT4DPO(Blip2Base):
             load_in_4bit=True,
             device_map=device_map,
         )
+                    
+        self.config = self.llama_model.config
         
         for name, param in self.llama_model.named_parameters():
             param.requires_grad = False
@@ -126,9 +130,50 @@ class MiniGPT4DPO(Blip2Base):
         )
         if freeze_llama_proj:
             for name, param in self.llama_proj.named_parameters():
-                print ("freeze {} for lora only finetuning".format(name))
+                print ("freeze {} for finetuning post interaction block".format(name))
                 param.requires_grad = False
         self.freeze_llama_proj = freeze_llama_proj
+                
+        # convert uint to float16 and set gradient backward
+        if tune_post_interaction_block:
+            # for name, param in self.llama_model.post_interaction_block.named_parameters():
+            #     if torch.isnan(param.data).any():
+            #         nan_indices = torch.isnan(param.data)
+            #         param.data[nan_indices] = torch.randn(nan_indices.sum(), dtype=torch.float16, device=param.data.device)
+            #         print("NaNs detected in param.data before conversion in train")
+            #         print(f"name: {name}, {param.data}")
+            #         # import sys
+            #         # sys.exit(1)
+            #     print(f"name, {name}, {param}")
+            #     if param.data.dtype == torch.uint8:
+            #         print("convert {} to float16".format(name))
+            #         param.data = param.data.float()
+            #         if torch.isnan(param.data).any():
+            #             print("nan in post_interaction_block3")
+            #         param.data = param.data / 255.0
+            #         if torch.isnan(param.data).any():
+            #             print("nan in post_interaction_block3")
+            #         param.data = param.data.to(torch.float16)
+            #         if torch.isnan(param.data).any():
+            #             print("nan in post_interaction_block3")
+            #         # if "align" in name:
+            #         #     print(f"name in pib: {name}")
+            #         #     print(f"param.data: {param.data}")
+            for name, param in self.llama_model.post_interaction_block.named_parameters():
+                if param.data.dtype == torch.uint8:
+                    print("convert {} to float16 and reinitialize".format(name))
+                    # 将参数转换为 float 并重新初始化
+                    param.data = torch.randn_like(param.data, dtype=torch.float16, device=param.data.device)
+                    if torch.isnan(param.data).any():
+                        print("NaNs detected in reinitialized param.data (converted from uint8)")
+                elif param.data.dtype == torch.float16:
+                    print("reinitialize {} float16 parameter".format(name))
+                    # 直接重新初始化为 float16
+                    param.data = torch.randn_like(param.data, dtype=torch.float16, device=param.data.device)
+                    if torch.isnan(param.data).any():
+                        print("NaNs detected in reinitialized param.data (float16)")
+                param.requires_grad = True
+        self.tune_post_interaction_block = tune_post_interaction_block
         
         self.max_txt_len = max_txt_len
         self.end_sym = end_sym
@@ -298,9 +343,11 @@ class MiniGPT4DPO(Blip2Base):
         image = torch.cat([image.unsqueeze(0) for image in inputs['image']], dim=0)
         img_embeds, atts_img = self.encode_img(image)
         _img_embeds = img_embeds
-        print("---------------------------------------------------------------------------------------------")
-        print(f"img_embeds_qian: {img_embeds.shape}")
-        print(f"atts_img_qian: {atts_img.shape}")
+
+        with self.maybe_autocast():
+            _image_features = self.visual_encoder(image).to(image.device)
+            # _image_features = _image_features.to(dtype=img_embeds.dtype())
+            _image_features = _image_features.type_as(img_embeds)
 
         instruction = []
         for idx in range(len(inputs["data_type"])):
@@ -312,8 +359,6 @@ class MiniGPT4DPO(Blip2Base):
                 instruction.append(random.choice(self.prompt_list))
         
         img_embeds, atts_img = self.prompt_wrap(img_embeds, atts_img, instruction)
-        print(f"img_embeds_hou: {img_embeds.shape}")
-        print(f"atts_img_hou: {atts_img.shape}")
         
         self.llama_tokenizer.padding_side = "right"
         text = [t + self.end_sym for t in inputs["chosen"]]
@@ -353,7 +398,7 @@ class MiniGPT4DPO(Blip2Base):
 
         with self.maybe_autocast():
             outputs = self.llama_model(
-                image_features=_img_embeds,
+                image_features=_image_features,
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,
                 return_dict=True,
@@ -390,6 +435,11 @@ class MiniGPT4DPO(Blip2Base):
         img_embeds, atts_img = self.encode_img(image_batch)
         img_embeds, atts_img = self.prompt_wrap(img_embeds, atts_img, instruction)
         
+        with self.maybe_autocast():
+            _image_features = self.visual_encoder(image_batch).to(image_batch.device)
+            # _image_features = _image_features.to(dtype=img_embeds.dtype())
+            _image_features = _image_features.type_as(img_embeds)
+        
         self.llama_tokenizer.padding_side = "right"
         text_input = [t + self.end_sym for t in text_input]
     
@@ -398,6 +448,7 @@ class MiniGPT4DPO(Blip2Base):
         )
         
         dpo_inputs = {
+            "concatenated_image_features": _image_features,
             "concatenated_input_embeds": inputs_embeds,
             "concatenated_attention_mask": attention_mask,
             "concatenated_labels": labels,
@@ -475,6 +526,7 @@ class MiniGPT4DPO(Blip2Base):
         end_sym = cfg.get("end_sym", '\n')
 
         freeze_llama_proj = cfg.get("freeze_llama_proj", False)
+        tune_post_interaction_block = cfg.get("tune_post_interaction_block", True)
         
         model = cls(
             vit_model=vit_model,
@@ -495,6 +547,7 @@ class MiniGPT4DPO(Blip2Base):
             low_resource=low_resource,
             device_8bit=device_8bit,
             freeze_llama_proj=freeze_llama_proj,
+            tune_post_interaction_block=tune_post_interaction_block,
         )
 
         ckpt_path = cfg.get("ckpt", "")  # load weights of MiniGPT-4

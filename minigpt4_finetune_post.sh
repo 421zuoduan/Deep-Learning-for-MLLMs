@@ -1,5 +1,5 @@
-localhost='0,1,2,3'
-# localhost='4,5,6,7'
+# localhost='0,1,2,3'
+localhost='4,5,6,7'
 
 version1='v8'
 time1='20240512'
@@ -8,7 +8,7 @@ eval_bs1='1'
 gradient_accumulation_steps1='16'
 epoch1='1'
 gpu1='4'
-learning_rate1='1e-6'
+learning_rate1='5e-7'
 
 source_folder="/home/cuiruochen/model/minigpt4/llama-2-7b-chat-hf------post-to-be-copied"
 target_folder1="/home/cuiruochen/model/minigpt4/llama-2-7b-chat-hf-post-${time1}-${version1}-bs-${per_device_train_batch_size1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${learning_rate1}"

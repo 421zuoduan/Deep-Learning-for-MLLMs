@@ -28,7 +28,9 @@ class MiniGPT4DPOTrainer(BaseDPOTrainer):
             if self.is_encoder_decoder
             else {}
         )
+        
         all_logits = model.llama_model(
+            image_features=concatenated_batch["concatenated_image_features"],
             inputs_embeds=concatenated_batch["concatenated_input_embeds"],
             attention_mask=concatenated_batch["concatenated_attention_mask"],
             **model_kwargs,

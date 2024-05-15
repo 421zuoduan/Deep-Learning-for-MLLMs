@@ -349,7 +349,7 @@ class PostInteractionBlock(nn.Module):
         """
         self.config = config
         
-        self.align = AlignMLP(config.hidden_size, config.intermediate_size, config.hidden_size, config.align_hidden_act)
+        self.align = AlignMLP(config.mm_hidden_size, config.intermediate_size, config.hidden_size, config.align_hidden_act)
         
         self.image_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         

@@ -703,11 +703,10 @@ class LlamaPIBForCausalLM(LlamaPIBPreTrainedModel):
 
         hidden_states = outputs[0]
         
-        image_features = self.get_model().get_vision_tower()(_input)
         
         post_interaction_block_outputs = self.post_interaction_block(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
         
-        logits = self.lm_head(hidden_states)
+        logits = self.lm_head(post_interaction_block_outputs)
 
         loss = None
         if labels is not None:

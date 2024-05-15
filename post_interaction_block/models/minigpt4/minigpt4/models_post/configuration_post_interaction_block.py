@@ -98,14 +98,14 @@ class LlamaPIBConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
-    model_type = "instructblip-post-interaction"
+    model_type = "minigpt4-post-interaction"
     keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(
         self,
         vocab_size=32000,
         hidden_size=4096,
-        mm_hidden_size=1024,
+        mm_hidden_size=1408,
         intermediate_size=11008,
         num_hidden_layers=32,
         num_attention_heads=32,

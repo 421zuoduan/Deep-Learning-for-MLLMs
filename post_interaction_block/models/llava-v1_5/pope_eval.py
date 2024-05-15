@@ -116,6 +116,7 @@ def main(args):
                 stopping_criteria=[stopping_criteria])
 
         outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
+        print(f"outputs: {outputs}")
         results.append({
             "question": message_input,
             "answer": outputs,

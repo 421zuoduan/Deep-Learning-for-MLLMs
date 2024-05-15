@@ -15,6 +15,40 @@ import torch.nn.functional as F
 from transformers.activations import ACT2FN
 from .configuration_post_interaction_block import LlamaPIBConfig
 
+def kl_divergence(p, q):
+    # 计算 KL 散度
+    return torch.sum(p * (torch.log(p) - torch.log(q)))
+
+# 假设 hidden_states 和 outputs 都是形状为 (batch_size, sequence_length, hidden_size) 的张量
+# 需要将这些张量转换为概率分布，以便计算 KL 散度
+
+def compute_kl_divergence(hidden_states, outputs):
+    # 对 hidden_states 和 outputs 进行 softmax 转换成概率分布
+    # print(f"hidden_state: {hidden_states.shape}")
+    if hidden_states.shape[1] != 1 and outputs.shape[1] != 1:
+        # print(F.softmax(hidden_states, dim=-1),F.softmax(hidden_states, dim=-1).shape)
+        hidden_probs = torch.sum(F.softmax(hidden_states, dim=1), dim=-1)
+        print(f"hidden_probs1: {hidden_probs.shape}")
+        hidden_probs = F.softmax(hidden_probs, dim=-1)
+        # print(f"hidden_probs2: {hidden_probs.shape}")
+        outputs_probs = torch.sum(F.softmax(outputs, dim=1), dim=-1)
+        # print(f"outputs1: {outputs_probs}")
+        print(f"outputs1: {outputs_probs.shape}")
+        outputs_probs = F.softmax(outputs_probs, dim=-1)
+        # print(f"outputs2: {outputs_probs.shape}")
+    
+    # 保存到本地
+    # if hidden_probs.shape[1] != 1 and outputs_probs.shape[1] != 1:
+        kl_loss = kl_divergence(hidden_probs, outputs_probs)
+        return kl_loss
+        # torch.save(hidden_probs, "hidden_probs.pt")
+        # torch.save(outputs_probs, "outputs_probs.pt")
+        
+    
+    # 计算 KL 散度
+    # kl_loss = kl_divergence(hidden_probs, outputs_probs)
+    
+    return None
 
 class AlignMLP(nn.Module):
     def __init__(self, mm_hidden_size, intermediate_size, hidden_size, hidden_act):
@@ -358,8 +392,19 @@ class PostInteractionBlock(nn.Module):
             outputs = blk(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds, causal_attention_mask, pretraining_tp=self.config.pretraining_tp)
             
         # _outputs = outputs
-            
+        
+        # _outputs = outputs
+        kl_loss = compute_kl_divergence(hidden_states, outputs)
+        if kl_loss != None:
+            final_kl_divergence = kl_loss.item()
+            print(f"final_kl_divergence: {final_kl_divergence}")
+            # 把 final_kl_divergence 保存到本地, 保存到 kl_divergence.txt 文件中, 每次打开在其后追加
+            with open("kl_divergence.txt", "a") as f:
+                f.write(str(final_kl_divergence) + "\n")
+        
         outputs = outputs + hidden_states
+        
+
         
         
         

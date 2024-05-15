@@ -35,7 +35,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
-from ..multimodal_post_interaction_block.post_interaction_block_align_after_align_no_ca import PostInteractionBlock
+from ..multimodal_post_interaction_block.post_interaction_block import PostInteractionBlock
 
 from ..llava_arch import LlavaPIBMetaModel, LlavaPIBMetaForCausalLM
 from ..multimodal_post_interaction_block.configuration_post_interaction_block import LlamaPIBConfig
@@ -189,6 +189,9 @@ class LlamaPIBForCausalLM(LlamaPreTrainedModel):
         )
         
         hidden_states = backbone_outputs[0]
+        
+        # print(f"image_features.type: {image_features.type()}")
+        # print(f"hidden_states.type: {hidden_states.type()}")
         
         post_interaction_block_outputs = self.post_interaction_block(image_features, hidden_states, input_ids, attention_mask, position_ids, past_key_values, inputs_embeds)
         
@@ -382,11 +385,11 @@ class LlavaLlamaPIBForCausalLM(LlamaPIBForCausalLM, LlavaPIBMetaForCausalLM):
         # else:
         #     print("inputs_embeds is None")
         
-        # # 目前主要使用的方法
-        # vision_tower_image_features = self.get_model().get_vision_tower()(_input)
+        # 目前主要使用的方法
+        vision_tower_image_features = self.get_model().get_vision_tower()(_input)
         
-        # align after align
-        vision_tower_image_features = self.encode_images(_input)
+        # # align after align
+        # vision_tower_image_features = self.encode_images(_input)
 
         return super().forward(
             vision_tower_image_features,

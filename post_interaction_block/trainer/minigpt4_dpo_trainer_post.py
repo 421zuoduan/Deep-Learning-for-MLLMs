@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from .base_dpo_trainer_post import BaseDPOTrainer
 
-class MiniGPT4DPOTrainer(BaseDPOTrainer):
+class MiniGPT4DPOPIBTrainer(BaseDPOTrainer):
     def concatenated_forward(
         self, model, batch
     ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
@@ -29,10 +29,13 @@ class MiniGPT4DPOTrainer(BaseDPOTrainer):
             else {}
         )
         all_logits = model.llama_model(
+            image_features=concatenated_batch["concatenated_image_features"],
             inputs_embeds=concatenated_batch["concatenated_input_embeds"],
             attention_mask=concatenated_batch["concatenated_attention_mask"],
             **model_kwargs,
         ).logits.to(torch.float32)
+        
+        # print(f"all_logits: {all_logits}")
         
         cal_batch_logp = self._get_batch_logps
         all_logps = cal_batch_logp(

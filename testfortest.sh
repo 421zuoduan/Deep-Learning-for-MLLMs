@@ -24,6 +24,12 @@ wait
 
 
 
+CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun --nproc_per_node 4 --master_port $RANDOM post_interaction_block/models/llava-v1_5/generate_ans.py     --coco_path post_interaction_block/data/coco2014     --pope_path post_interaction_block/data/POPE     --model-path /home/cuiruochen/model/llava-v1.5-7b     --set popular    --K 100
+
+
+
 export CUDA_VISIBLE_DEVICES=${localhost}
 
 python 哥们,留四张卡,跑大模型.py --size 30000 --gpus ${gpu1} --interval 0.01
+
+

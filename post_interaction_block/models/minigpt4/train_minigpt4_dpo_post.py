@@ -1,5 +1,7 @@
 import os
 os.environ["WANDB_PROJECT"]="minigpt4-post-hadpo"
+# skip CUDA checking
+os.environ['DS_SKIP_CUDA_CHECK'] = '1'
 
 import yaml
 import json
@@ -21,7 +23,10 @@ from transformers import HfArgumentParser, TrainingArguments
 import minigpt4.tasks as tasks
 from minigpt4.common.config import Config
 
-from post_interaction_block.trainer.minigpt4_dpo_trainer import MiniGPT4DPOTrainer
+import sys
+sys.path.append(".")
+
+from post_interaction_block.trainer.minigpt4_dpo_trainer_post import MiniGPT4DPOPIBTrainer
 from dpo_dataset import PopeDataset, AugmentedCaptionDataset, CCSBUAlignDataset
 
 # Define and parse arguments.
@@ -53,7 +58,7 @@ class ScriptArguments:
     )
     learning_rate: Optional[float] = field(default=5e-4, metadata={"help": "optimizer learning rate"})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "the lr scheduler type"})
-    warmup_steps: Optional[int] = field(default=100, metadata={"help": "the number of warmup steps"})
+    warmup_steps: Optional[int] = field(default=10, metadata={"help": "the number of warmup steps"})
     weight_decay: Optional[float] = field(default=0.05, metadata={"help": "the weight decay"})
     optimizer_type: Optional[str] = field(default="paged_adamw_32bit", metadata={"help": "the optimizer type"})
     max_grad_norm: Optional[float] = field(default=1.0, metadata={"help": "maximum value of gradient norm"})
@@ -89,6 +94,7 @@ class ScriptArguments:
     )
     
     freeze_llama_proj: Optional[bool] = field(default=True, metadata={"help": "whether to freeze llama_proj module"})
+    tune_post_interaction_block: Optional[bool] = field(default=True, metadata={"help": "whether to tune post interaction block"})
     
     # debug argument for distributed training
     ignore_bias_buffers: Optional[bool] = field(
@@ -135,14 +141,17 @@ def main():
     
     # set dpo model parameters
     cfg.config.model.freeze_llama_proj = script_args.freeze_llama_proj
+    cfg.config.model.tune_post_interaction_block = script_args.tune_post_interaction_block
     
     ref_cfg = copy.deepcopy(cfg)
     ref_cfg.config.model.freeze_llama_proj = True # no lora in reference model
+    ref_cfg.config.tune_post_interaction_block = False
     
     # model & dataset
     # policy
     task = tasks.setup_task(cfg)
     model = task.build_model(cfg)
+    
     # reference
     task_ref = tasks.setup_task(ref_cfg)
     ref_model = task_ref.build_model(ref_cfg)
@@ -174,6 +183,36 @@ def main():
     # if not use gradient_checkpointing, do not set ddp_find_unused_parameters
     if not script_args.gradient_checkpointing:
         script_args.ddp_find_unused_parameters = False
+        
+    # if hasattr(model.llama_model, "lm_head"):
+    #     if model.llama_model.lm_head is not None:
+    #         for name, param in model.llama_model.lm_head.named_parameters():
+    #             print(f"name: {name}, {param.dtype}")
+    #             param.requires_grad_(True)
+        
+    if script_args.tune_post_interaction_block:
+        if hasattr(model.llama_model, "post_interaction_block"):
+            if model.llama_model.post_interaction_block is not None:
+                for name, param in model.llama_model.post_interaction_block.named_parameters():
+                    if torch.isnan(param.data).any():
+                        print("NaNs detected in param.data before conversion in train")
+                        print(f"name: {name}, {param.dtype}")
+                        import sys
+                        sys.exit(1)
+                    # if "align" in name:
+                    #     print(f"name in main: {name}")
+                    #     print(f"param.data: {param.data}")
+                    param.requires_grad_(True)
+        else:
+            Warning("No post interaction block found in the model.")
+            
+    if model.llama_model.post_interaction_block is not None:
+        for name, param in model.llama_model.post_interaction_block.named_parameters():
+            if torch.isnan(param.data).any():
+                print("NaNs detected in param.data before conversion in train")
+                print(f"name: {name}, {param.dtype}")
+                import sys
+                sys.exit(1)
     
     # initialize training arguments:
     training_args = TrainingArguments(
@@ -202,7 +241,7 @@ def main():
     )
     
     # initialize the DPO trainer
-    dpo_trainer = MiniGPT4DPOTrainer(
+    dpo_trainer = MiniGPT4DPOPIBTrainer(
         model=model,
         ref_model=ref_model,
         args=training_args,

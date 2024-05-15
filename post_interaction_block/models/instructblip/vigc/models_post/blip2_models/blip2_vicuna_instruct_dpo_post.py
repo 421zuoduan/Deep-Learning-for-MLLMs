@@ -496,6 +496,7 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
         with self.maybe_autocast():
             image_embeds = self.ln_vision(self.visual_encoder(image))
         image_atts = torch.ones(image_embeds.size()[:-1], dtype=torch.long).to(image.device)
+        image_features = self.visual_encoder(image)
 
         batch_size = len(candidates)
 
@@ -585,6 +586,7 @@ class DPOBlip2VicunaInstructPIB(Blip2Base):
 
         with self.maybe_autocast():
             outputs = self.llm_model(
+                image_features=image_features,
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,
                 return_dict=True,

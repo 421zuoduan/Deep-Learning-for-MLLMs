@@ -93,6 +93,7 @@ class ScriptArguments:
     )
     
     freeze_llm_proj: Optional[bool] = field(default=True, metadata={"help": "whether to freeze llama_proj module"})
+    tune_post_interaction_block: Optional[bool] = field(default=True, metadata={"help": "whether to tune post interaction block"})
     
     # debug argument for distributed training
     ignore_bias_buffers: Optional[bool] = field(
@@ -166,6 +167,15 @@ def main():
     # if not use gradient_checkpointing, do not set ddp_find_unused_parameters
     if not script_args.gradient_checkpointing:
         script_args.ddp_find_unused_parameters = False
+        
+    if script_args.tune_post_interaction_block:
+        if hasattr(model.llm_model, "post_interaction_block"):
+            if model.llm_model.post_interaction_block is not None:
+                for name, param in model.llm_model.post_interaction_block.named_parameters():
+                    print(f"name: {name}, {param.dtype}")
+                    param.requires_grad_(False)
+        else:
+            Warning("No post interaction block found in the model.")
     
     # initialize training arguments:
     training_args = TrainingArguments(
@@ -193,11 +203,11 @@ def main():
         seed=script_args.seed,
     )
     
-    print("---------------------------------------------------------------------")
-    print(f"Training arguments: {training_args}")
+    # print("---------------------------------------------------------------------")
+    # print(f"Training arguments: {training_args}")
     
-    print("------------------------------------------------------------------------------------------------")
-    print(f"model: {model}")
+    # print("------------------------------------------------------------------------------------------------")
+    # print(f"model: {model}")
     
     # initialize the DPO trainer
     dpo_trainer = InstructBLIPDPOTrainer(
