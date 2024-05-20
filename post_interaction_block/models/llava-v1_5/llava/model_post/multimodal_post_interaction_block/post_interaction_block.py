@@ -394,13 +394,13 @@ class PostInteractionBlock(nn.Module):
         # _outputs = outputs
         
         # _outputs = outputs
-        kl_loss = compute_kl_divergence(hidden_states, outputs)
-        if kl_loss != None:
-            final_kl_divergence = kl_loss.item()
-            print(f"final_kl_divergence: {final_kl_divergence}")
-            # 把 final_kl_divergence 保存到本地, 保存到 kl_divergence.txt 文件中, 每次打开在其后追加
-            with open("kl_divergence.txt", "a") as f:
-                f.write(str(final_kl_divergence) + "\n")
+        # kl_loss = compute_kl_divergence(hidden_states, outputs)
+        # if kl_loss != None:
+        #     final_kl_divergence = kl_loss.item()
+        #     print(f"final_kl_divergence: {final_kl_divergence}")
+        #     # 把 final_kl_divergence 保存到本地, 保存到 kl_divergence.txt 文件中, 每次打开在其后追加
+        #     with open("kl_divergence.txt", "a") as f:
+        #         f.write(str(final_kl_divergence) + "\n")
         
         outputs = outputs + hidden_states
         

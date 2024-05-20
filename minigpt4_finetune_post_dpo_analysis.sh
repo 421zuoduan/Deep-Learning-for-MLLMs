@@ -8,7 +8,7 @@ eval_bs1='1'
 gradient_accumulation_steps1='16'
 epoch1='1'
 gpu1='4'
-learning_rate1='2e-4'
+learning_rate1='5e-7'
 
 source_folder="/home/cuiruochen/model/minigpt4/llama-2-7b-chat-hf------post-to-be-copied"
 target_folder1="/home/cuiruochen/model/minigpt4/llama-2-7b-chat-hf-post-${time1}-${version1}-bs-${per_device_train_batch_size1}-${eval_bs1}-${gradient_accumulation_steps1}-epoch-${epoch1}-gpu-${gpu1}-lr-${learning_rate1}"
@@ -33,8 +33,9 @@ else
 fi
 echo "Folders check completed"
 
-CUDA_VISIBLE_DEVICES=${localhost} accelerate launch --main_process_port 35572 post_interaction_block/models/minigpt4/train_minigpt4_dpo_post.py \
+CUDA_VISIBLE_DEVICES=${localhost} accelerate launch --main_process_port 35572 post_interaction_block/models/minigpt4/train_minigpt4_dpo_post_dpo_analysis.py \
     --cfg_path post_interaction_block/models/minigpt4/train_configs/minigpt4_llama2_stage3_dpo_post.yaml \
+    --ref_cfg_path post_interaction_block/models/minigpt4/train_configs/minigpt4_llama2_stage3_dpo.yaml \
     --auxilary True \
     --ccsbualign_data_path post_interaction_block/data/cc_sbu_align \
     --pope_train_data_path post_interaction_block/data/hadpo/minigpt4/pope_data.json \

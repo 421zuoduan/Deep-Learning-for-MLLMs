@@ -35,7 +35,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.models.llama import LlamaPreTrainedModel
-from ..multimodal_post_interaction_block.post_interaction_block import PostInteractionBlock
+from ..multimodal_post_interaction_block.post_interaction_block_with_align_linear import PostInteractionBlock
 
 from ..llava_arch import LlavaPIBMetaModel, LlavaPIBMetaForCausalLM
 from ..multimodal_post_interaction_block.configuration_post_interaction_block import LlamaPIBConfig

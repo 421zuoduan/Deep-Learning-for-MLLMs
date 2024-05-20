@@ -136,39 +136,14 @@ class MiniGPT4DPOPIB(Blip2Base):
                 
         # convert uint to float16 and set gradient backward
         if tune_post_interaction_block:
-            # for name, param in self.llama_model.post_interaction_block.named_parameters():
-            #     if torch.isnan(param.data).any():
-            #         nan_indices = torch.isnan(param.data)
-            #         param.data[nan_indices] = torch.randn(nan_indices.sum(), dtype=torch.float16, device=param.data.device)
-            #         print("NaNs detected in param.data before conversion in train")
-            #         print(f"name: {name}, {param.data}")
-            #         # import sys
-            #         # sys.exit(1)
-            #     print(f"name, {name}, {param}")
-            #     if param.data.dtype == torch.uint8:
-            #         print("convert {} to float16".format(name))
-            #         param.data = param.data.float()
-            #         if torch.isnan(param.data).any():
-            #             print("nan in post_interaction_block3")
-            #         param.data = param.data / 255.0
-            #         if torch.isnan(param.data).any():
-            #             print("nan in post_interaction_block3")
-            #         param.data = param.data.to(torch.float16)
-            #         if torch.isnan(param.data).any():
-            #             print("nan in post_interaction_block3")
-            #         # if "align" in name:
-            #         #     print(f"name in pib: {name}")
-            #         #     print(f"param.data: {param.data}")
             for name, param in self.llama_model.post_interaction_block.named_parameters():
                 if param.data.dtype == torch.uint8:
                     print("convert {} to float16 and reinitialize".format(name))
-                    # 将参数转换为 float 并重新初始化
                     param.data = torch.randn_like(param.data, dtype=torch.float16, device=param.data.device)
                     if torch.isnan(param.data).any():
                         print("NaNs detected in reinitialized param.data (converted from uint8)")
                 elif param.data.dtype == torch.float16:
                     print("reinitialize {} float16 parameter".format(name))
-                    # 直接重新初始化为 float16
                     param.data = torch.randn_like(param.data, dtype=torch.float16, device=param.data.device)
                     if torch.isnan(param.data).any():
                         print("NaNs detected in reinitialized param.data (float16)")

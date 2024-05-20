@@ -13,7 +13,8 @@ from minigpt4.conversation.conversation import StoppingCriteriaSub
 
 from transformers import LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
-from transformers.models.llama.modeling_llama import LlamaForCausalLM
+# from transformers.models.llama.modeling_llama import LlamaForCausalLM
+from minigpt4.models.modeling_llama import LlamaForCausalLM
 
 from peft import (
     LoraConfig,

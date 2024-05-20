@@ -629,6 +629,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
+        image_features: torch.FloatTensor = None,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
@@ -690,7 +691,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         hidden_states = outputs[0]
         logits = self.lm_head(hidden_states)
 
-        pdb.set_trace()
+        # pdb.set_trace()
         
         loss = None
         if labels is not None:

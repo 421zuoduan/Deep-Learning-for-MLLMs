@@ -7,6 +7,8 @@ import warnings
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from .base_dpo_trainer_post import BaseDPOTrainer
+# from post_interaction_block.models.minigpt4.minigpt4.models.mini_gpt4_dpo import MiniGPT4DPO
+# from post_interaction_block.models.minigpt4.minigpt4.models_post.mini_gpt4_dpo_post import MiniGPT4DPOPIB
 
 class MiniGPT4DPOPIBTrainer(BaseDPOTrainer):
     def concatenated_forward(
@@ -28,12 +30,32 @@ class MiniGPT4DPOPIBTrainer(BaseDPOTrainer):
             if self.is_encoder_decoder
             else {}
         )
+        
+        if "concatenated_image_features" not in concatenated_batch:
+            concatenated_batch["concatenated_image_features"] = None
+        
         all_logits = model.llama_model(
             image_features=concatenated_batch["concatenated_image_features"],
             inputs_embeds=concatenated_batch["concatenated_input_embeds"],
             attention_mask=concatenated_batch["concatenated_attention_mask"],
             **model_kwargs,
         ).logits.to(torch.float32)
+        
+        # if isinstance(model, MiniGPT4DPO):
+        #     all_logits = model.llama_model(
+        #         inputs_embeds=concatenated_batch["concatenated_input_embeds"],
+        #         attention_mask=concatenated_batch["concatenated_attention_mask"],
+        #         **model_kwargs,
+        #     ).logits.to(torch.float32)
+        # elif isinstance(model, MiniGPT4DPOPIB):
+        #     all_logits = model.llama_model(
+        #         image_features=concatenated_batch["concatenated_image_features"],
+        #         inputs_embeds=concatenated_batch["concatenated_input_embeds"],
+        #         attention_mask=concatenated_batch["concatenated_attention_mask"],
+        #         **model_kwargs,
+        #     ).logits.to(torch.float32)
+        # else:
+        #     raise ValueError("model must be MiniGPT4DPO or MiniGPT4DPOPIB")
         
         # print(f"all_logits: {all_logits}")
         

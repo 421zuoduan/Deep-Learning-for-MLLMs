@@ -140,7 +140,7 @@ class LlamaPIBConfig(PretrainedConfig):
 
         self.num_key_value_heads = num_key_value_heads
         self.hidden_act = hidden_act
-        self.align_hidden_act = hidden_act
+        self.align_hidden_act = align_hidden_act
         self.initializer_range = initializer_range
         self.rms_norm_eps = rms_norm_eps
         self.pretraining_tp = pretraining_tp

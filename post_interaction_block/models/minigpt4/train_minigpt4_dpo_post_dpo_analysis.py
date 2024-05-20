@@ -38,6 +38,7 @@ class ScriptArguments:
     
     # model config path
     cfg_path: str = field(metadata={"help": "path to configuration file."})
+    ref_cfg_path: str = field(metadata={"help": "path to reference configuration file."})
     
     # data parameters
     ccsbualign_data_path: Optional[str] = field(default=None, metadata={"help": "path of the CCSBUAlign data."})
@@ -135,14 +136,13 @@ def main():
     parser = HfArgumentParser(ScriptArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
     
+    # set dpo model parameters
     cfg_dict = {'cfg_path': script_args.cfg_path, 'options': None}
     cfg = Config(Namespace(**cfg_dict))
-    
-    # set dpo model parameters
     cfg.config.model.freeze_llama_proj = script_args.freeze_llama_proj
     cfg.config.model.tune_post_interaction_block = script_args.tune_post_interaction_block
-    
-    ref_cfg = copy.deepcopy(cfg)
+    ref_cfg_dict = {'cfg_path': script_args.ref_cfg_path, 'options': None}
+    ref_cfg = Config(Namespace(**ref_cfg_dict))
     ref_cfg.config.model.freeze_llama_proj = True # no lora in reference model
     ref_cfg.config.tune_post_interaction_block = False
     
